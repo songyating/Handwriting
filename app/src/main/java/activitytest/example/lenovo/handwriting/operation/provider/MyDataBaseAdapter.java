@@ -7,11 +7,13 @@ import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.provider.BaseColumns;
+import android.util.Log;
 
 import java.text.SimpleDateFormat;
 
 /**
  * 该类用于创建数据库，保存日记信息，提供了数据的更新，插入，查询,删除等基本功能
+ *
  * @author syt
  */
 public class MyDataBaseAdapter {
@@ -29,23 +31,21 @@ public class MyDataBaseAdapter {
         public static final String DATE = "date";//日期时间
         public static final String TITLE = "title";//日记标题
         public static final String CONTENT = "content";// 日记内容
-        public static final String IMAGE = "image"; //图片路径
 
-        static final String[] NOTES_QUERY_COLUMNS = {_ID, DATE, TITLE, CONTENT, IMAGE};
+        static final String[] NOTES_QUERY_COLUMNS = {_ID, DATE, TITLE, CONTENT};
 
         public static final int _ID_INDEX = 0;
         public static final int DATE_INDEX = 1;
         public static final int TITLE_INDEX = 2;
         public static final int CONTENT_INDEX = 3;
-        public static final int IMAGEURI_INDEX = 4;
     }
 
     // 创建Timer表
     private static final String DB_CREATE_TABLE_NOTE = "CREATE TABLE "
             + DB_TABLE_NOTE + "(" + NotesColumns._ID
-            + " INTEGER PRIMARY KEY Autoincrement," + NotesColumns.DATE + " INTEGER,"
-            + NotesColumns.TITLE +" VARCHAR(100),"+ NotesColumns.CONTENT
-            + " VARCHAR(200)," + NotesColumns.IMAGE + "BLOB);";
+            + " INTEGER PRIMARY KEY ," + NotesColumns.DATE + " INTEGER,"
+            + NotesColumns.TITLE + " VARCHAR(100)," + NotesColumns.CONTENT
+            + " VARCHAR(200));";
     private Context mContext = null; // 本地Context对象
 
 
@@ -124,6 +124,7 @@ public class MyDataBaseAdapter {
      * @throws SQLException
      */
     public void open() throws SQLException {
+        Log.d("Main", "open: ");
         if (isOpen()) {
             return;
         } else {
@@ -152,15 +153,14 @@ public class MyDataBaseAdapter {
     /**
      * 添加一条数据,按数据在数据库中的列序依次插入
      *
-     * @param noteInfo
-     *            {初始化NoteInfo类,并在函数中调用该类的方法}
+     * @param noteInfo {初始化NoteInfo类,并在函数中调用该类的方法}
      * @return
      */
     public long insertData(NoteInfo noteInfo) {
         ContentValues initialValues = new ContentValues();
-        initialValues.put(NotesColumns.CONTENT,noteInfo.getContent());
-        initialValues.put(NotesColumns.TITLE,noteInfo.getTitle());
-        initialValues.put(NotesColumns.DATE,noteInfo.getDate());
+        initialValues.put(NotesColumns.CONTENT, noteInfo.getContent());
+        initialValues.put(NotesColumns.TITLE, noteInfo.getTitle());
+        initialValues.put(NotesColumns.DATE, noteInfo.getDate());
         //initialValues.put(NotesColumns.IMAGE,noteInfo.getImageUri());
         try {
             return mSQLiteDatabase.insert(DB_TABLE_NOTE, null, initialValues);
@@ -173,14 +173,13 @@ public class MyDataBaseAdapter {
     /**
      * 查询指定数据
      *
-     * @param id
-     *            日记的ID,唯一标识
+     * @param id 日记的ID,唯一标识
      * @return
      * @throws SQLException
      */
     public Cursor fetchNoteData(int id) {
         Cursor mCursor = null;
-            try {
+        try {
             mCursor = mSQLiteDatabase.query(true, DB_TABLE_NOTE,
                     NotesColumns.NOTES_QUERY_COLUMNS, NotesColumns._ID + "="
                             + id, null, null, null, null, null);
@@ -194,28 +193,33 @@ public class MyDataBaseAdapter {
 
     public Cursor fetchAllNoteData() {
         try {
-           return mSQLiteDatabase.query(true, DB_TABLE_NOTE,
+            Cursor cursor = mSQLiteDatabase.query(true, DB_TABLE_NOTE,
                     NotesColumns.NOTES_QUERY_COLUMNS, null, null,
-                   null, null, null, null);
+                    null, null, "id desc", null);
+            cursor.moveToFirst();
+            return cursor;
         } catch (Exception e) {
             // TODO Auto-generated catch block
-            e.printStackTrace();
+            // mSQLiteDatabase.execSQL(DB_CREATE_TABLE_NOTE);
+            Log.d("SSS", "fetchAllNoteData: " + e.toString());
             return null;
         }
     }
+
     /***
-     * 通过字段值修改NOTE表数据
+     * 通过各个字段值修改NOTE表数据
      *
      * @param noteID
-     * @param values
+     * @param noteInfo
      * @return
      */
-    public boolean updateColumns(int noteID, String[] columnNames,
-                                 String[] values) {
+    public boolean updateColumns(int noteID, NoteInfo noteInfo) {
         ContentValues args = new ContentValues();
-        for (int i = 0; i < columnNames.length; i++) {
-            args.put(columnNames[i], values[i]);
-        }
+
+        args.put(NotesColumns.DATE, noteInfo.getDate());
+        args.put(NotesColumns.TITLE, noteInfo.getTitle());
+        args.put(NotesColumns.CONTENT, noteInfo.getContent());
+
         return mSQLiteDatabase.update(DB_TABLE_NOTE, args, NotesColumns._ID
                 + "=" + noteID, null) > 0;
     }
@@ -223,12 +227,18 @@ public class MyDataBaseAdapter {
     /**
      * 删除一条数据
      *
-     * @param id
-     *            日记的ID,唯一标识
+     * @param id 日记的ID,唯一标识
      * @return
      */
-    public boolean deleteData(long id) {
+    public boolean deleteData(int id) {
         return mSQLiteDatabase.delete(DB_TABLE_NOTE, NotesColumns._ID + "="
                 + id, null) > 0;
+    }
+
+    /**
+     * 删除所有数据
+     */
+    public boolean deleteAllData() {
+        return mSQLiteDatabase.delete(DB_TABLE_NOTE, null, null) > 0;
     }
 }
