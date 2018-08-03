@@ -1,5 +1,6 @@
 package activitytest.example.lenovo.handwriting.operation.activity;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -8,7 +9,9 @@ import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -31,6 +34,7 @@ import org.json.JSONTokener;
 
 import activitytest.example.lenovo.handwriting.HandWriting;
 import activitytest.example.lenovo.handwriting.R;
+import activitytest.example.lenovo.handwriting.operation.PublicFunction;
 import activitytest.example.lenovo.handwriting.operation.provider.NoteInfo;
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -66,9 +70,8 @@ public class NewNote extends AppCompatActivity {
     private Context mContext;
     private int dataId;//数据的id,用来获取所查看数据的id
     private boolean isNew = true;//是否要新建笔迹，true：新建笔迹  flase：查看笔迹
-    private AlertDialog dialog;
+    private boolean isEdit = false;//查看转为编辑
     private NoteInfo noteInfo;
-    private Intent intent;
     private String titleContentInfo;
     private String noteContentInfo;
 
@@ -77,19 +80,86 @@ public class NewNote extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_new_note);
         ButterKnife.bind(this);
-
         mContext = NewNote.this;
+        saveBtnListener();
         handWriting = (HandWriting) getApplicationContext();
         //语音转汉字的初始化
         SpeechUtility.createUtility(mContext, SpeechConstant.APPID + "=5b5fdab3");
 
-        intent = getIntent();
+        Intent intent = getIntent();
         dataId = intent.getIntExtra("id", 0);
         if (dataId != 0) {
             isNew = false;//查看笔迹
             init(dataId);//初始化控件内容
         }
     }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private void saveBtnListener() {
+        DisplayMetrics dm = getResources().getDisplayMetrics();
+
+        final int screenWidth = dm.widthPixels;
+        final int screenHeight = dm.heightPixels - PublicFunction.dip2px(mContext, 60);
+
+
+        save.setOnTouchListener(new View.OnTouchListener() {
+            int lastX, lastY;
+            long startTime = 0;
+            long endTime = 0;
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        lastX = (int) event.getRawX();// 获取触摸事件触摸位置的原始X坐标
+                        lastY = (int) event.getRawY();
+                        startTime = System.currentTimeMillis();
+                        break;
+                    case MotionEvent.ACTION_MOVE:
+                        int dx = (int) event.getRawX() - lastX;
+                        int dy = (int) event.getRawY() - lastY;
+                        int l = v.getLeft() + dx;
+                        int b = v.getBottom() + dy;
+                        int r = v.getRight() + dx;
+                        int t = v.getTop() + dy;
+                        // 下面判断移动是否超出屏幕
+                        if (l < 0) {
+                            l = 0;
+                            r = l + v.getWidth();
+                        }
+                        if (t < 0) {
+                            t = 0;
+                            b = t + v.getHeight();
+                        }
+                        if (r > screenWidth) {
+                            r = screenWidth;
+                            l = r - v.getWidth();
+                        }
+                        if (b > screenHeight) {
+                            b = screenHeight;
+                            t = b - v.getHeight();
+                        }
+                        v.layout(l, t, r, b);
+                        lastX = (int) event.getRawX();
+                        lastY = (int) event.getRawY();
+                        v.postInvalidate();
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        endTime = System.currentTimeMillis();
+                        break;
+                    default:
+                        break;
+                }
+                if (endTime - startTime > 0.1 * 1000L) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        });
+
+    }
+
 
     /**
      * 查看笔迹
@@ -132,12 +202,8 @@ public class NewNote extends AppCompatActivity {
         String title = titleContent.getText().toString();
         String note = noteContent.getText().toString();
         if (title.length() == 0) {
-            if (isNew) {
-                displayToast("标题不能为空");
-                titleContent.requestFocus();
-            } else {
-                titleContent.setText("我的笔迹");
-            }
+            displayToast("标题不能为空");
+            titleContent.requestFocus();
         } else if (note.length() == 0) {
             displayToast("笔迹内容不能为空");
             noteContent.requestFocus();
@@ -166,6 +232,11 @@ public class NewNote extends AppCompatActivity {
         Toast.makeText(mContext, message, Toast.LENGTH_SHORT).show();
     }
 
+    /**
+     * 返回事件
+     *
+     * @param view
+     */
     public void back(View view) {
         if (noteContent.getText().toString().length() > 0) {
             if (isAlert()) {
@@ -178,6 +249,17 @@ public class NewNote extends AppCompatActivity {
         }
     }
 
+    /**
+     * 重写返回事件
+     */
+    @Override
+    public void onBackPressed() {
+        back(null);
+    }
+
+    /**
+     * @return isAlert
+     */
     private boolean isAlert() {
 
         if (isNew) {
@@ -193,8 +275,12 @@ public class NewNote extends AppCompatActivity {
         }
     }
 
+    /**
+     * 显示弹出框
+     */
     private void displayAlert() {
         AlertDialog.Builder builder = new AlertDialog.Builder(mContext);
+        builder.setIcon(R.drawable.head);
         builder.setTitle("是否要保存编辑");
         // Add the buttons
         builder.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
@@ -209,13 +295,13 @@ public class NewNote extends AppCompatActivity {
                 finish();
             }
         });
-        dialog = builder.create();
+        AlertDialog dialog = builder.create();
         dialog.show();
     }
 
     public void takeVoice(View view) {
         //新建笔迹——调用录音
-        if (isNew) {
+        if (isNew || isEdit) {
             RecognizerDialog dialog = new RecognizerDialog(mContext, null);
             dialog.setParameter(SpeechConstant.LANGUAGE, "zh_cn");
             dialog.setParameter(SpeechConstant.ACCENT, "mandarin");
@@ -234,6 +320,7 @@ public class NewNote extends AppCompatActivity {
             displayToast("请开始说话");
         } else {
             //查看笔迹——切换到编辑模式
+            isEdit = true;
             titleLookView.setVisibility(View.GONE);
             contentLookView.setVisibility(View.GONE);
             scroll.setVisibility(View.GONE);

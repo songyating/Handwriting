@@ -65,7 +65,7 @@ public class ChangePasswordActivity extends AppCompatActivity {
         });
 
         TextView main_title = (TextView) findViewById(R.id.change_password_toolbar_title);
-        main_title.setText("Change password");
+        main_title.setText("更改密码");
 
         init();
 

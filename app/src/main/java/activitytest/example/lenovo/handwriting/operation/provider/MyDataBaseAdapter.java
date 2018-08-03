@@ -195,12 +195,11 @@ public class MyDataBaseAdapter {
         try {
             Cursor cursor = mSQLiteDatabase.query(true, DB_TABLE_NOTE,
                     NotesColumns.NOTES_QUERY_COLUMNS, null, null,
-                    null, null, "id desc", null);
+                    null, null, "date desc", null);
             cursor.moveToFirst();
             return cursor;
         } catch (Exception e) {
             // TODO Auto-generated catch block
-            // mSQLiteDatabase.execSQL(DB_CREATE_TABLE_NOTE);
             Log.d("SSS", "fetchAllNoteData: " + e.toString());
             return null;
         }

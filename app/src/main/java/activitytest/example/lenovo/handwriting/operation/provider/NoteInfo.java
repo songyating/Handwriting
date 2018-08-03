@@ -1,8 +1,7 @@
 package activitytest.example.lenovo.handwriting.operation.provider;
 
 import android.database.Cursor;
-
-import java.sql.Blob;
+import android.util.Log;
 
 import activitytest.example.lenovo.handwriting.HandWriting;
 import activitytest.example.lenovo.handwriting.operation.provider.MyDataBaseAdapter.NotesColumns;
@@ -18,13 +17,16 @@ public class NoteInfo {
     private long date;
     private String title;
     private String content;
-    private Blob imageUri;
 
     public NoteInfo( Cursor cursor){
         this.id = cursor.getInt(NotesColumns._ID_INDEX);
         this.date = cursor.getLong(NotesColumns.DATE_INDEX);
         this.content = cursor.getString(NotesColumns.CONTENT_INDEX);
         this.title = cursor.getString(NotesColumns.TITLE_INDEX);
+        Log.d("Main", "NoteInfo: "+id+" "+date+" "+content+" "+title);
+    }
+    public NoteInfo(){
+
     }
 
     public int getId() {
@@ -57,14 +59,6 @@ public class NoteInfo {
 
     public void setContent(String content) {
         this.content = content;
-    }
-
-    public Blob getImageUri() {
-        return imageUri;
-    }
-
-    public void setImageUri(Blob imageUri) {
-        this.imageUri = imageUri;
     }
 
 }

@@ -36,6 +36,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.amazonaws.mobileconnectors.cognitoidentityprovider.CognitoDevice;
 import com.amazonaws.mobileconnectors.cognitoidentityprovider.CognitoUser;
@@ -55,7 +56,7 @@ import java.util.Map;
 import activitytest.example.lenovo.handwriting.R;
 
 public class MainActivity extends AppCompatActivity {
-    private final String TAG="MainActivity";
+    private final String TAG = "MainActivity";
 
     private NavigationView nDrawer;
     private DrawerLayout mDrawer;
@@ -63,6 +64,7 @@ public class MainActivity extends AppCompatActivity {
     private Toolbar toolbar;
     private AlertDialog userDialog;
     private ProgressDialog waitDialog;
+
 
     // Screen fields
     private EditText inUsername;
@@ -93,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Set navigation drawer for this screen
         mDrawer = (DrawerLayout) findViewById(R.id.main_drawer_layout);
-        mDrawerToggle = new ActionBarDrawerToggle(this,mDrawer, toolbar, R.string.nav_drawer_open, R.string.nav_drawer_close);
+        mDrawerToggle = new ActionBarDrawerToggle(this, mDrawer, toolbar, R.string.nav_drawer_open, R.string.nav_drawer_close);
         mDrawer.addDrawerListener(mDrawerToggle);
         mDrawerToggle.syncState();
         nDrawer = (NavigationView) findViewById(R.id.nav_view);
@@ -127,8 +129,8 @@ public class MainActivity extends AppCompatActivity {
 
         switch (requestCode) {
             case 1:
-                // Register user
-                if(resultCode == RESULT_OK) {
+                // 用户注册
+                if (resultCode == RESULT_OK) {
                     String name = data.getStringExtra("name");
                     if (!name.isEmpty()) {
                         inUsername.setText(name);
@@ -148,8 +150,8 @@ public class MainActivity extends AppCompatActivity {
                 }
                 break;
             case 2:
-                // Confirm register user
-                if(resultCode == RESULT_OK) {
+                // 验证注册用户（激活账号）
+                if (resultCode == RESULT_OK) {
                     String name = data.getStringExtra("name");
                     if (!name.isEmpty()) {
                         inUsername.setText(name);
@@ -159,26 +161,26 @@ public class MainActivity extends AppCompatActivity {
                 }
                 break;
             case 3:
-                // Forgot password
-            if(resultCode == RESULT_OK) {
-                String newPass = data.getStringExtra("newPass");
-                String code = data.getStringExtra("code");
-                if (newPass != null && code != null) {
-                    if (!newPass.isEmpty() && !code.isEmpty()) {
-                        showWaitDialog("Setting new password...");
-                        forgotPasswordContinuation.setPassword(newPass);
-                        forgotPasswordContinuation.setVerificationCode(code);
-                        forgotPasswordContinuation.continueTask();
+                // 忘记密码
+                if (resultCode == RESULT_OK) {
+                    String newPass = data.getStringExtra("newPass");
+                    String code = data.getStringExtra("code");
+                    if (newPass != null && code != null) {
+                        if (!newPass.isEmpty() && !code.isEmpty()) {
+                            showWaitDialog("Setting new password...");
+                            forgotPasswordContinuation.setPassword(newPass);
+                            forgotPasswordContinuation.setVerificationCode(code);
+                            forgotPasswordContinuation.continueTask();
+                        }
                     }
                 }
-            }
-            break;
+                break;
             case 4:
                 // User
-                if(resultCode == RESULT_OK) {
+                if (resultCode == RESULT_OK) {
                     clearInput();
                     String name = data.getStringExtra("TODO");
-                    if(name != null) {
+                    if (name != null) {
                         if (!name.isEmpty()) {
                             name.equals("exit");
                             onBackPressed();
@@ -189,9 +191,9 @@ public class MainActivity extends AppCompatActivity {
             case 5:
                 //MFA
                 closeWaitDialog();
-                if(resultCode == RESULT_OK) {
+                if (resultCode == RESULT_OK) {
                     String code = data.getStringExtra("mfacode");
-                    if(code != null) {
+                    if (code != null) {
                         if (code.length() > 0) {
                             showWaitDialog("Signing in...");
                             multiFactorAuthenticationContinuation.setMfaCode(code);
@@ -208,7 +210,7 @@ public class MainActivity extends AppCompatActivity {
                 closeWaitDialog();
                 Boolean continueSignIn = false;
                 if (resultCode == RESULT_OK) {
-                   continueSignIn = data.getBooleanExtra("continueSignIn", false);
+                    continueSignIn = data.getBooleanExtra("continueSignIn", false);
                 }
                 if (continueSignIn) {
                     continueWithFirstTimeSignIn();
@@ -239,34 +241,34 @@ public class MainActivity extends AppCompatActivity {
         nDrawer.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener() {
             @Override
             public boolean onNavigationItemSelected(MenuItem item) {
-                  performAction(item);
+                performAction(item);
                 return true;
             }
         });
     }
 
-    // Perform the action for the selected navigation item
+    // 执行所选导航项的操作
 
     private void performAction(MenuItem item) {
-        // Close the navigation drawer
+        // 关闭导航抽屉
         mDrawer.closeDrawers();
 
-        // Find which item was selected
-        switch(item.getItemId()) {
+        // 找到所选项目
+        switch (item.getItemId()) {
             case R.id.nav_sign_up:
-                // Start sign-up
+                // 开始注册
                 signUpNewUser();
                 break;
             case R.id.nav_sign_up_confirm:
-                // Confirm new user
+                // 验证用户
                 confirmUser();
                 break;
             case R.id.nav_sign_in_forgot_password:
-                // User has forgotten the password, start the process to set a new password
+                // 用户忘记了密码，开始设置新密码的过程
                 forgotpasswordUser();
                 break;
             case R.id.nav_about:
-                // For the inquisitive
+                // 关于
                 Intent aboutAppActivity = new Intent(this, AboutApp.class);
                 startActivity(aboutAppActivity);
                 break;
@@ -274,47 +276,56 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * 注册
+     */
     private void signUpNewUser() {
         Intent registerActivity = new Intent(this, RegisterUser.class);
         startActivityForResult(registerActivity, 1);
     }
 
+    /**
+     * 登陆
+     */
     private void signInUser() {
         username = inUsername.getText().toString();
-        if(username == null || username.length() < 1) {
+        if (username == null || username.length() < 1) {
             TextView label = (TextView) findViewById(R.id.textViewUserIdMessage);
-            label.setText(inUsername.getHint()+" cannot be empty");
-            inUsername.setBackground(ContextCompat.getDrawable(this,R.drawable.text_border_error));
+            label.setText(inUsername.getHint() + " cannot be empty");
+            inUsername.setBackground(ContextCompat.getDrawable(this, R.drawable.text_border_error));
             return;
         }
 
         AppHelper.setUser(username);
 
         password = inPassword.getText().toString();
-        if(password == null || password.length() < 1) {
+        if (password == null || password.length() < 1) {
             TextView label = (TextView) findViewById(R.id.textViewUserPasswordMessage);
-            label.setText(inPassword.getHint()+" cannot be empty");
-            inPassword.setBackground(ContextCompat.getDrawable(this,R.drawable.text_border_error));
+            label.setText(inPassword.getHint() + " cannot be empty");
+            inPassword.setBackground(ContextCompat.getDrawable(this, R.drawable.text_border_error));
             return;
         }
 
-        showWaitDialog("Signing in...");
+        Toast.makeText(this, "正在登录...", Toast.LENGTH_SHORT).show();
         AppHelper.getPool().getUser(username).getSessionInBackground(authenticationHandler);
     }
 
+    /**
+     * 忘记密码
+     */
     private void forgotpasswordUser() {
         username = inUsername.getText().toString();
-        if(username == null) {
+        if (username == null) {
             TextView label = (TextView) findViewById(R.id.textViewUserIdMessage);
-            label.setText(inUsername.getHint()+" cannot be empty");
-            inUsername.setBackground(ContextCompat.getDrawable(this,R.drawable.text_border_error));
+            label.setText(inUsername.getHint() + " cannot be empty");
+            inUsername.setBackground(ContextCompat.getDrawable(this, R.drawable.text_border_error));
             return;
         }
 
-        if(username.length() < 1) {
+        if (username.length() < 1) {
             TextView label = (TextView) findViewById(R.id.textViewUserIdMessage);
-            label.setText(inUsername.getHint()+" cannot be empty");
-            inUsername.setBackground(ContextCompat.getDrawable(this,R.drawable.text_border_error));
+            label.setText(inUsername.getHint() + " cannot be empty");
+            inUsername.setBackground(ContextCompat.getDrawable(this, R.drawable.text_border_error));
             return;
         }
 
@@ -322,10 +333,15 @@ public class MainActivity extends AppCompatActivity {
         AppHelper.getPool().getUser(username).forgotPasswordInBackground(forgotPasswordHandler);
     }
 
+    /**
+     * 获取返回码
+     *
+     * @param forgotPasswordContinuation
+     */
     private void getForgotPasswordCode(ForgotPasswordContinuation forgotPasswordContinuation) {
         this.forgotPasswordContinuation = forgotPasswordContinuation;
         Intent intent = new Intent(this, ForgotPasswordActivity.class);
-        intent.putExtra("destination",forgotPasswordContinuation.getParameters().getDestination());
+        intent.putExtra("destination", forgotPasswordContinuation.getParameters().getDestination());
         intent.putExtra("deliveryMed", forgotPasswordContinuation.getParameters().getDeliveryMedium());
         startActivityForResult(intent, 3);
     }
@@ -337,6 +353,9 @@ public class MainActivity extends AppCompatActivity {
         startActivityForResult(mfaActivity, 5);
     }
 
+    /**
+     * 第一次登陆
+     */
     private void firstTimeSignIn() {
         Intent newPasswordActivity = new Intent(this, NewPassword.class);
         startActivityForResult(newPasswordActivity, 6);
@@ -347,7 +366,7 @@ public class MainActivity extends AppCompatActivity {
         newPasswordContinuation.setPassword(AppHelper.getPasswordForFirstTimeLogin());
         Map<String, String> newAttributes = AppHelper.getUserAttributesForFirstTimeLogin();
         if (newAttributes != null) {
-            for(Map.Entry<String, String> attr: newAttributes.entrySet()) {
+            for (Map.Entry<String, String> attr : newAttributes.entrySet()) {
                 Log.e(TAG, String.format("Adding attribute: %s, %s", attr.getKey(), attr.getValue()));
                 newPasswordContinuation.setUserAttribute(attr.getKey(), attr.getValue());
             }
@@ -358,11 +377,11 @@ public class MainActivity extends AppCompatActivity {
             closeWaitDialog();
             TextView label = (TextView) findViewById(R.id.textViewUserIdMessage);
             label.setText("Sign-in failed");
-            inPassword.setBackground(ContextCompat.getDrawable(this,R.drawable.text_border_error));
+            inPassword.setBackground(ContextCompat.getDrawable(this, R.drawable.text_border_error));
 
             label = (TextView) findViewById(R.id.textViewUserIdMessage);
             label.setText("Sign-in failed");
-            inUsername.setBackground(ContextCompat.getDrawable(this,R.drawable.text_border_error));
+            inUsername.setBackground(ContextCompat.getDrawable(this, R.drawable.text_border_error));
 
             showDialogMessage("Sign-in failed", AppHelper.formatException(e));
         }
@@ -370,7 +389,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void confirmUser() {
         Intent confirmActivity = new Intent(this, SignUpConfirm.class);
-        confirmActivity.putExtra("source","main");
+        confirmActivity.putExtra("source", "main");
         startActivityForResult(confirmActivity, 2);
     }
 
@@ -383,7 +402,7 @@ public class MainActivity extends AppCompatActivity {
     private void findCurrent() {
         CognitoUser user = AppHelper.getPool().getCurrentUser();
         username = user.getUserId();
-        if(username != null) {
+        if (username != null) {
             AppHelper.setUser(username);
             inUsername.setText(user.getUserId());
             user.getSessionInBackground(authenticationHandler);
@@ -391,24 +410,24 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void getUserAuthentication(AuthenticationContinuation continuation, String username) {
-        if(username != null) {
+        if (username != null) {
             this.username = username;
             AppHelper.setUser(username);
         }
-        if(this.password == null) {
+        if (this.password == null) {
             inUsername.setText(username);
             password = inPassword.getText().toString();
-            if(password == null) {
+            if (password == null) {
                 TextView label = (TextView) findViewById(R.id.textViewUserPasswordMessage);
-                label.setText(inPassword.getHint()+" enter password");
-                inPassword.setBackground(ContextCompat.getDrawable(this,R.drawable.text_border_error));
+                label.setText(inPassword.getHint() + " enter password");
+                inPassword.setBackground(ContextCompat.getDrawable(this, R.drawable.text_border_error));
                 return;
             }
 
-            if(password.length() < 1) {
+            if (password.length() < 1) {
                 TextView label = (TextView) findViewById(R.id.textViewUserPasswordMessage);
-                label.setText(inPassword.getHint()+" enter password");
-                inPassword.setBackground(ContextCompat.getDrawable(this,R.drawable.text_border_error));
+                label.setText(inPassword.getHint() + " enter password");
+                inPassword.setBackground(ContextCompat.getDrawable(this, R.drawable.text_border_error));
                 return;
             }
         }
@@ -423,10 +442,10 @@ public class MainActivity extends AppCompatActivity {
         inUsername.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-                if(s.length() == 0) {
+                if (s.length() == 0) {
                     TextView label = (TextView) findViewById(R.id.textViewUserIdLabel);
                     label.setText(R.string.Username);
-                    inUsername.setBackground(ContextCompat.getDrawable(getApplicationContext(),R.drawable.text_border_selector));
+                    inUsername.setBackground(ContextCompat.getDrawable(getApplicationContext(), R.drawable.text_border_selector));
                 }
             }
 
@@ -438,7 +457,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void afterTextChanged(Editable s) {
-                if(s.length() == 0) {
+                if (s.length() == 0) {
                     TextView label = (TextView) findViewById(R.id.textViewUserIdLabel);
                     label.setText("");
                 }
@@ -449,10 +468,10 @@ public class MainActivity extends AppCompatActivity {
         inPassword.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-                if(s.length() == 0) {
+                if (s.length() == 0) {
                     TextView label = (TextView) findViewById(R.id.textViewUserPasswordLabel);
                     label.setText(R.string.Password);
-                    inPassword.setBackground(ContextCompat.getDrawable(getApplicationContext(),R.drawable.text_border_selector));
+                    inPassword.setBackground(ContextCompat.getDrawable(getApplicationContext(), R.drawable.text_border_selector));
                 }
             }
 
@@ -464,7 +483,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void afterTextChanged(Editable s) {
-                if(s.length() == 0) {
+                if (s.length() == 0) {
                     TextView label = (TextView) findViewById(R.id.textViewUserPasswordLabel);
                     label.setText("");
                 }
@@ -478,7 +497,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onSuccess() {
             closeWaitDialog();
-            showDialogMessage("密码更改成功!","");
+            showDialogMessage("密码更改成功!", "");
             inPassword.setText("");
             inPassword.requestFocus();
         }
@@ -492,7 +511,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onFailure(Exception e) {
             closeWaitDialog();
-            showDialogMessage("忘记密码失败",AppHelper.formatException(e));
+            showDialogMessage("忘记密码失败", AppHelper.formatException(e));
         }
     };
 
@@ -500,10 +519,10 @@ public class MainActivity extends AppCompatActivity {
     AuthenticationHandler authenticationHandler = new AuthenticationHandler() {
         @Override
         public void onSuccess(CognitoUserSession cognitoUserSession, CognitoDevice device) {
-            Log.e(TAG, "Auth Success");
+            Log.e(TAG, "验证成功");
             AppHelper.setCurrSession(cognitoUserSession);
             AppHelper.newDevice(device);
-            closeWaitDialog();
+           // closeWaitDialog();
             launchUser();
         }
 
@@ -527,11 +546,11 @@ public class MainActivity extends AppCompatActivity {
             closeWaitDialog();
             TextView label = (TextView) findViewById(R.id.textViewUserIdMessage);
             label.setText("登录失败");
-            inPassword.setBackground(ContextCompat.getDrawable(getApplicationContext(),R.drawable.text_border_error));
+            inPassword.setBackground(ContextCompat.getDrawable(getApplicationContext(), R.drawable.text_border_error));
 
             label = (TextView) findViewById(R.id.textViewUserIdMessage);
             label.setText("登录失败");
-            inUsername.setBackground(ContextCompat.getDrawable(getApplicationContext(),R.drawable.text_border_error));
+            inUsername.setBackground(ContextCompat.getDrawable(getApplicationContext(), R.drawable.text_border_error));
 
             showDialogMessage("登录失败", AppHelper.formatException(e));
         }
@@ -555,22 +574,23 @@ public class MainActivity extends AppCompatActivity {
 
 
     private void clearInput() {
-        if(inUsername == null) {
+        if (inUsername == null) {
             inUsername = (EditText) findViewById(R.id.editTextUserId);
         }
 
-        if(inPassword == null) {
+        if (inPassword == null) {
             inPassword = (EditText) findViewById(R.id.editTextUserPassword);
         }
 
         inUsername.setText("");
         inUsername.requestFocus();
-        inUsername.setBackground(ContextCompat.getDrawable(this,R.drawable.text_border_selector));
+        inUsername.setBackground(ContextCompat.getDrawable(this, R.drawable.text_border_selector));
         inPassword.setText("");
-        inPassword.setBackground(ContextCompat.getDrawable(this,R.drawable.text_border_selector));
+        inPassword.setBackground(ContextCompat.getDrawable(this, R.drawable.text_border_selector));
     }
 
     private void showWaitDialog(String message) {
+        Log.d(TAG, "showWaitDialog: haha");
         closeWaitDialog();
         waitDialog = new ProgressDialog(this);
         waitDialog.setTitle(message);
@@ -596,8 +616,7 @@ public class MainActivity extends AppCompatActivity {
     private void closeWaitDialog() {
         try {
             waitDialog.dismiss();
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             //
         }
     }

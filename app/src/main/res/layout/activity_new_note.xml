@@ -6,7 +6,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
-    tools:context=".operation.activity.NewNote">
+    tools:context=".operation.activity.NewNote"
+    tools:ignore="RtlSymmetry">
 
     <android.support.v7.widget.Toolbar
         android:id="@+id/new_note_toolbar"
@@ -38,61 +39,75 @@
                 android:textSize="20sp"/>
 
             <ImageView
-                android:id="@+id/take_photo"
+                android:id="@+id/take_voice"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_alignParentEnd="true"
                 android:layout_alignParentRight="true"
-                android:onClick="takePhoto"
-                app:srcCompat="@drawable/ic_takephoto"/>
+                android:onClick="takeVoice"
+                app:srcCompat="@drawable/ic_voice"/>
         </RelativeLayout>
     </android.support.v7.widget.Toolbar>
 
     <LinearLayout
+        android:id="@+id/background"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_below="@+id/new_note_toolbar"
         android:orientation="vertical"
-        android:padding="20dp"
-        android:weightSum="8">
+        android:padding="20dp">
 
-        <LinearLayout
+        <TextView
+            android:id="@+id/title_look_view"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
             android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:weightSum="6">
+            android:padding="5dp"
+            android:textColor="@color/text_or_icon"
+            android:textSize="20sp"
+            android:visibility="gone"/>
+
+        <RelativeLayout
+            android:id="@+id/title_view"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
 
             <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
+                android:id="@+id/label"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
                 android:text="标题:"
                 android:textColor="@color/text_or_icon"
                 android:textSize="18sp"/>
 
             <EditText
                 android:id="@+id/title_content"
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:layout_weight="5"
+                android:layout_marginLeft="8dp"
+                android:layout_marginStart="8dp"
+                android:layout_toEndOf="@+id/label"
+                android:layout_toRightOf="@+id/label"
                 android:background="@null"
+                android:gravity="center_vertical"
                 android:maxLines="1"/>
 
-        </LinearLayout>
+        </RelativeLayout>
 
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
             android:background="@color/text_or_icon"/>
 
-        <LinearLayout
+        <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_marginTop="10dp"
-            android:layout_weight="7"
-            android:orientation="horizontal">
+            android:layout_weight="9">
+
 
             <EditText
                 android:id="@+id/note_content"
@@ -102,19 +117,37 @@
                 android:gravity="top|left"
                 android:hint="笔迹内容..."/>
 
-        </LinearLayout>
+            <ScrollView
+                android:id="@+id/scroll"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone">
 
-        <android.support.design.widget.FloatingActionButton
-            android:id="@+id/save"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="right"
-            android:layout_marginBottom="50dp"
-            android:onClick="save"
-            app:elevation="2dp"
-            app:fabSize="normal"
-            app:pressedTranslationZ="15dp"
-            app:srcCompat="@drawable/ic_save"/>
+                <TextView
+                    android:id="@+id/content_look_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:textColor="@color/text_or_icon"
+                    android:textSize="18sp"
+                    android:visibility="gone"/>
+            </ScrollView>
+
+        </RelativeLayout>
     </LinearLayout>
+
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/save"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:layout_marginBottom="60dp"
+        android:layout_marginRight="20dp"
+        android:onClick="save"
+        app:elevation="2dp"
+        app:fabSize="normal"
+        app:pressedTranslationZ="15dp"
+        app:srcCompat="@drawable/ic_save"/>
+
 
 </RelativeLayout>

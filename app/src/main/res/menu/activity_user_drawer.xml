@@ -22,7 +22,7 @@
         android:checkableBehavior="single">
         <item
             android:id="@+id/nav_user_settings"
-            android:title="日间模式" />
+            android:title="心情卡片" />
     </group>
 
     <group

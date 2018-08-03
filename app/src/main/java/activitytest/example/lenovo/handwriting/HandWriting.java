@@ -4,9 +4,12 @@ import android.app.Application;
 
 import activitytest.example.lenovo.handwriting.operation.provider.MyDataBaseAdapter;
 
-public class HandWriting extends Application{
+public class HandWriting extends Application {
+    public static String PREFS_NAME = "activitytest.example.lenovo.handwriting";
+    public static String PICTURE_PATH = "picturepath";
 
     public MyDataBaseAdapter myDataBaseAdapter;
+
     @Override
     public void onCreate() {
         super.onCreate();
