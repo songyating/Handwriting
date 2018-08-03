@@ -17,31 +17,43 @@
 
 package activitytest.example.lenovo.handwriting.myuserpools;
 
+import android.annotation.SuppressLint;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.MediaStore;
+import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
+import android.support.v4.content.ContextCompat;
+import android.support.v4.content.FileProvider;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.LinearLayout;
-import android.widget.ListView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.amazonaws.mobileconnectors.cognitoidentityprovider.CognitoDevice;
 import com.amazonaws.mobileconnectors.cognitoidentityprovider.CognitoUser;
-import com.amazonaws.mobileconnectors.cognitoidentityprovider.CognitoUserAttributes;
 import com.amazonaws.mobileconnectors.cognitoidentityprovider.CognitoUserCodeDeliveryDetails;
 import com.amazonaws.mobileconnectors.cognitoidentityprovider.CognitoUserDetails;
 import com.amazonaws.mobileconnectors.cognitoidentityprovider.CognitoUserSession;
@@ -49,11 +61,14 @@ import com.amazonaws.mobileconnectors.cognitoidentityprovider.handlers.GenericHa
 import com.amazonaws.mobileconnectors.cognitoidentityprovider.handlers.GetDetailsHandler;
 import com.amazonaws.mobileconnectors.cognitoidentityprovider.handlers.UpdateAttributesHandler;
 
-import java.util.ArrayList;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.List;
 
 import activitytest.example.lenovo.handwriting.HandWriting;
 import activitytest.example.lenovo.handwriting.R;
+import activitytest.example.lenovo.handwriting.operation.PublicFunction;
 import activitytest.example.lenovo.handwriting.operation.activity.NewNote;
 import activitytest.example.lenovo.handwriting.operation.provider.NoteInfo;
 import activitytest.example.lenovo.handwriting.operation.provider.NoteRecycleViewAdapter;
@@ -67,9 +82,10 @@ public class UserActivity extends AppCompatActivity {
     private Toolbar toolbar;
     private AlertDialog userDialog;
     private ProgressDialog waitDialog;
-    private ListView attributesList;
     private RecyclerView mRecycleView;
     private NoteRecycleViewAdapter noteRecycleViewAdapter;
+    private FloatingActionButton newBtn;
+    private File outputImage;
 
     // Cognito user objects
     private CognitoUser user;
@@ -78,13 +94,13 @@ public class UserActivity extends AppCompatActivity {
 
     // User details
     private String username;
-    private String email;
 
-    // To track changes to user details
-    private final List<String> attributesToDelete = new ArrayList<>();
+    private SharedPreferences mSharedPreferences;
 
-
+    public static final int TAKE_PHOTO = 1;
+    private Uri imageUri;
     private static HandWriting handWriting;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -92,6 +108,8 @@ public class UserActivity extends AppCompatActivity {
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
         handWriting = (HandWriting) getApplicationContext();
+        mSharedPreferences = getSharedPreferences(
+                HandWriting.PREFS_NAME, 0);
         // Set toolbar for this screen
         toolbar = (Toolbar) findViewById(R.id.main_toolbar);
         toolbar.setTitle("");
@@ -100,6 +118,7 @@ public class UserActivity extends AppCompatActivity {
         main_title.setText("笔 迹");
         setSupportActionBar(toolbar);
 
+        newBtn = findViewById(R.id.new_note);
         mRecycleView = findViewById(R.id.main_recycleview);
         noteRecycleViewAdapter = new NoteRecycleViewAdapter();
 
@@ -112,10 +131,116 @@ public class UserActivity extends AppCompatActivity {
         nDrawer = (NavigationView) findViewById(R.id.nav_view);
         setNavDrawer();
         init();
+        showNotes();
+        mRecycleView.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
         mRecycleView.setAdapter(noteRecycleViewAdapter);
+        setListener();//对点击项进行监听
+        newBtnListener();//新建按钮的拖动监听
         View navigationHeader = nDrawer.getHeaderView(0);
         TextView navHeaderSubTitle = (TextView) navigationHeader.findViewById(R.id.textViewNavUserSub);
         navHeaderSubTitle.setText(username);
+
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private void newBtnListener() {
+        DisplayMetrics dm = getResources().getDisplayMetrics();
+
+        final int screenWidth = dm.widthPixels;
+        final int screenHeight = dm.heightPixels - PublicFunction.dip2px(UserActivity.this, 60);
+
+
+        newBtn.setOnTouchListener(new View.OnTouchListener() {
+            int lastX, lastY;
+            long startTime = 0;
+            long endTime = 0;
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        lastX = (int) event.getRawX();// 获取触摸事件触摸位置的原始X坐标
+                        lastY = (int) event.getRawY();
+                        startTime = System.currentTimeMillis();
+                        break;
+                    case MotionEvent.ACTION_MOVE:
+                        int dx = (int) event.getRawX() - lastX;
+                        int dy = (int) event.getRawY() - lastY;
+                        int l = v.getLeft() + dx;
+                        int b = v.getBottom() + dy;
+                        int r = v.getRight() + dx;
+                        int t = v.getTop() + dy;
+                        // 下面判断移动是否超出屏幕
+                        if (l < 0) {
+                            l = 0;
+                            r = l + v.getWidth();
+                        }
+                        if (t < 0) {
+                            t = 0;
+                            b = t + v.getHeight();
+                        }
+                        if (r > screenWidth) {
+                            r = screenWidth;
+                            l = r - v.getWidth();
+                        }
+                        if (b > screenHeight) {
+                            b = screenHeight;
+                            t = b - v.getHeight();
+                        }
+                        v.layout(l, t, r, b);
+                        lastX = (int) event.getRawX();
+                        lastY = (int) event.getRawY();
+                        v.postInvalidate();
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        endTime = System.currentTimeMillis();
+                        break;
+                    default:
+                        break;
+                }
+                if (endTime - startTime > 0.1 * 1000L) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        });
+
+    }
+
+    private void setListener() {
+        noteRecycleViewAdapter.setOnItemClickListener(new NoteRecycleViewAdapter.OnItemClickListener() {
+            @Override
+            public void onItemClick(int position) {
+                Intent look = new Intent(UserActivity.this, NewNote.class);
+                look.putExtra("id", position);
+                startActivityForResult(look, 23);
+            }
+
+            @Override
+            public void onLongItemClick(final int position) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(UserActivity.this);
+                builder.setIcon(R.drawable.head);
+                builder.setTitle("删除此条笔迹");
+                // Add the buttons
+                builder.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int id) {
+                        handWriting.myDataBaseAdapter.deleteData(position);
+                        showNotes();
+                    }
+                });
+                builder.setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int id) {
+                        dialog.dismiss();
+                    }
+                });
+                AlertDialog dialog = builder.create();
+                dialog.show();
+
+            }
+        });
     }
 
     @Override
@@ -132,13 +257,33 @@ public class UserActivity extends AppCompatActivity {
 
         // Do the task
         if (menuItem == R.id.user_update_attribute) {
-            //updateAllAttributes();
-            showWaitDialog("Updating...");
-            getDetails();
+          /*  showWaitDialog("Updating...");
+            getDetails();*/
+            takePhoto();
             return true;
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    private void takePhoto() {
+        String imageName = System.currentTimeMillis() + ".jpg";
+        outputImage = new File(getExternalCacheDir(), imageName);
+        try {
+            outputImage.createNewFile();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        if (Build.VERSION.SDK_INT >= 24) { //android7.0及以上
+            imageUri = FileProvider.getUriForFile(this,
+                    "activitytest.example.lenovo.handwriting.fileprovider", outputImage);
+        } else {
+            imageUri = Uri.fromFile(outputImage);
+        }
+        //启动相机程序
+        Intent intent = new Intent("android.media.action.IMAGE_CAPTURE");
+        intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
+        startActivityForResult(intent, TAKE_PHOTO);
     }
 
     @Override
@@ -151,6 +296,22 @@ public class UserActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
 
         switch (requestCode) {
+            case TAKE_PHOTO:
+                if (resultCode == RESULT_OK) {
+                    Bitmap bitmap = null;
+                    try {
+                        bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(imageUri));
+                    } catch (FileNotFoundException e) {
+                        e.printStackTrace();
+                    }
+                    mRecycleView.setBackground(getBitmap(bitmap,outputImage.getAbsolutePath()));
+                    //保存图片路径
+                    SharedPreferences.Editor editor = mSharedPreferences.edit();
+                    editor.putString(HandWriting.PICTURE_PATH, outputImage.getAbsolutePath());
+                    editor.apply();
+                }
+
+                break;
             case 20:
                 // Settings
                 if (resultCode == RESULT_OK) {
@@ -178,7 +339,26 @@ public class UserActivity extends AppCompatActivity {
                     }
                 }
                 break;
+            case 23:
+                // 查看笔迹
+                if (resultCode == RESULT_OK) {
+                    boolean refresh = data.getBooleanExtra("refresh", true);
+                    if (refresh) {
+                        showNotes();
+                    }
+                }
+                break;
+            default:
+                break;
         }
+    }
+
+    private Drawable getBitmap(Bitmap bitmap,String path) {
+        int degree = PublicFunction.getBitmapDegree(path);
+        Bitmap bitmap1 = PublicFunction.rotateBitmapByDegree(
+                PublicFunction.getRoundedCornerBitmap(bitmap), degree);
+        Drawable drawable = new BitmapDrawable(getResources(), bitmap1);
+        return drawable;
     }
 
     // Handle when the a navigation item is selected
@@ -234,31 +414,24 @@ public class UserActivity extends AppCompatActivity {
     // 显示笔迹列表
     private void showNotes() {
         noteRecycleViewAdapter.clearItems();
-        Cursor noteCursor =handWriting.myDataBaseAdapter.fetchAllNoteData();
-        try{
-            if (noteCursor!=null&&noteCursor.moveToNext()){
-                noteRecycleViewAdapter.addItem(new NoteInfo(noteCursor));
-                noteCursor.moveToNext();
+        Cursor noteCursor = handWriting.myDataBaseAdapter.fetchAllNoteData();
+        Log.d(TAG, "showNotes: " + handWriting.myDataBaseAdapter);
+        Log.d(TAG, "showNotes: " + noteCursor.getCount());
+        try {
+            if (noteCursor != null && noteCursor.moveToFirst()) {
+                for (int i = 0; i < noteCursor.getCount(); i++) {
+                    noteRecycleViewAdapter.addItem(new NoteInfo(noteCursor));
+                    noteCursor.moveToNext();
+                }
             }
-        }finally {
-            if (noteCursor!=null){
+        } finally {
+            if (noteCursor != null) {
                 noteCursor.close();
             }
         }
+        noteRecycleViewAdapter.notifyDataSetChanged();
     }
 
-    // Update attributes
-    private void updateAttribute(String attributeType, String attributeValue) {
-
-        if (attributeType == null || attributeType.length() < 1) {
-            return;
-        }
-        CognitoUserAttributes updatedUserAttributes = new CognitoUserAttributes();
-        updatedUserAttributes.addAttribute(attributeType, attributeValue);
-        Toast.makeText(getApplicationContext(), attributeType + ": " + attributeValue, Toast.LENGTH_LONG);
-        showWaitDialog("Updating...");
-        AppHelper.getPool().getUser(AppHelper.getCurrUser()).updateAttributesInBackground(updatedUserAttributes, updateHandler);
-    }
 
     // Show user MFA Settings
     private void showSettings() {
@@ -266,36 +439,19 @@ public class UserActivity extends AppCompatActivity {
         startActivityForResult(userSettingsActivity, 20);
     }
 
-    // Add a new attribute
+    // 新建笔迹
     private void addNote() {
         Intent newNote = new Intent(this, NewNote.class);
         startActivityForResult(newNote, 22);
     }
 
-    // Delete attribute
-    private void deleteAttribute(String attributeName) {
-        showWaitDialog("Deleting...");
-        List<String> attributesToDelete = new ArrayList<>();
-        attributesToDelete.add(attributeName);
-        AppHelper.getPool().getUser(AppHelper.getCurrUser()).deleteAttributesInBackground(attributesToDelete, deleteHandler);
-    }
 
-    // Change user password
+    // 改变密码
     private void changePassword() {
         Intent changePssActivity = new Intent(this, ChangePasswordActivity.class);
         startActivity(changePssActivity);
     }
 
-    // Verify attributes
-    private void attributesVerification() {
-        Intent attrbutesActivity = new Intent(this, VerifyActivity.class);
-        startActivityForResult(attrbutesActivity, 21);
-    }
-
-    private void showTrustedDevices() {
-        Intent trustedDevicesActivity = new Intent(this, DeviceSettings.class);
-        startActivity(trustedDevicesActivity);
-    }
 
     // 退出登录
     private void signOut() {
@@ -312,7 +468,21 @@ public class UserActivity extends AppCompatActivity {
         user = AppHelper.getPool().getUser(username);
 
         getDetails();
+        setBackground();
 
+    }
+
+    private void setBackground() {
+        String pictureFile = mSharedPreferences.getString(HandWriting.PICTURE_PATH, "");
+        if (pictureFile.length() == 0) {
+            mRecycleView.setBackground(ContextCompat.getDrawable(this, R.drawable.background));
+        } else {
+            Drawable picture = Drawable.createFromPath(pictureFile);
+            BitmapDrawable bd = (BitmapDrawable) picture;
+            assert bd != null;
+            Bitmap bm = bd.getBitmap();
+            mRecycleView.setBackground(getBitmap(bm,pictureFile));
+        }
     }
 
 
@@ -322,7 +492,6 @@ public class UserActivity extends AppCompatActivity {
             closeWaitDialog();
             // Store details in the AppHandler
             AppHelper.setUserDetails(cognitoUserDetails);
-            showNotes();
             // Trusted devices?
             handleTrustedDevice();
         }
@@ -405,28 +574,6 @@ public class UserActivity extends AppCompatActivity {
         }
     };
 
-    GenericHandler deleteHandler = new GenericHandler() {
-        @Override
-        public void onSuccess() {
-            closeWaitDialog();
-            // Attribute was deleted
-            Toast.makeText(getApplicationContext(), "Deleted", Toast.LENGTH_SHORT);
-
-            // Fetch user details from the the service
-            getDetails();
-        }
-
-        @Override
-        public void onFailure(Exception e) {
-            closeWaitDialog();
-            // Attribute delete failed
-            showDialogMessage("Delete failed", AppHelper.formatException(e), false);
-
-            // Fetch user details from the service
-            getDetails();
-        }
-    };
-
     GenericHandler trustedDeviceHandler = new GenericHandler() {
         @Override
         public void onSuccess() {
@@ -481,8 +628,9 @@ public class UserActivity extends AppCompatActivity {
 
     private void exit() {
         Intent intent = new Intent();
-        if (username == null)
+        if (username == null) {
             username = "";
+        }
         intent.putExtra("name", username);
         setResult(RESULT_OK, intent);
         finish();
