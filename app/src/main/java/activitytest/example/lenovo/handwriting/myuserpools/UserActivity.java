@@ -18,6 +18,7 @@
 package activitytest.example.lenovo.handwriting.myuserpools;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -29,8 +30,10 @@ import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
@@ -45,6 +48,7 @@ import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -54,27 +58,40 @@ import android.widget.TextView;
 
 import com.amazonaws.mobileconnectors.cognitoidentityprovider.CognitoDevice;
 import com.amazonaws.mobileconnectors.cognitoidentityprovider.CognitoUser;
-import com.amazonaws.mobileconnectors.cognitoidentityprovider.CognitoUserCodeDeliveryDetails;
 import com.amazonaws.mobileconnectors.cognitoidentityprovider.CognitoUserDetails;
 import com.amazonaws.mobileconnectors.cognitoidentityprovider.CognitoUserSession;
 import com.amazonaws.mobileconnectors.cognitoidentityprovider.handlers.GenericHandler;
 import com.amazonaws.mobileconnectors.cognitoidentityprovider.handlers.GetDetailsHandler;
-import com.amazonaws.mobileconnectors.cognitoidentityprovider.handlers.UpdateAttributesHandler;
+import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.model.PutObjectResult;
+import com.amazonaws.services.s3.model.S3Object;
+import com.amazonaws.services.s3.model.S3ObjectInputStream;
+import com.amazonaws.services.s3.model.S3ObjectSummary;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.channels.FileChannel;
 import java.util.List;
+import java.util.Map;
 
 import activitytest.example.lenovo.handwriting.HandWriting;
 import activitytest.example.lenovo.handwriting.R;
 import activitytest.example.lenovo.handwriting.operation.PublicFunction;
 import activitytest.example.lenovo.handwriting.operation.activity.NewNote;
+import activitytest.example.lenovo.handwriting.operation.mannager.CognitoClientManager;
+import activitytest.example.lenovo.handwriting.operation.provider.MyDataBaseAdapter;
 import activitytest.example.lenovo.handwriting.operation.provider.NoteInfo;
 import activitytest.example.lenovo.handwriting.operation.provider.NoteRecycleViewAdapter;
 
 public class UserActivity extends AppCompatActivity {
-    private final String TAG = "MainActivity";
+    private final String TAG = "SSS";
 
     private NavigationView nDrawer;
     private DrawerLayout mDrawer;
@@ -94,8 +111,12 @@ public class UserActivity extends AppCompatActivity {
 
     // User details
     private String username;
+    private String useremail;
+
+    private Boolean isFirstLogin;
 
     private SharedPreferences mSharedPreferences;
+    private SharedPreferences.Editor editor;
 
     public static final int TAKE_PHOTO = 1;
     private Uri imageUri;
@@ -110,6 +131,8 @@ public class UserActivity extends AppCompatActivity {
         handWriting = (HandWriting) getApplicationContext();
         mSharedPreferences = getSharedPreferences(
                 HandWriting.PREFS_NAME, 0);
+        //如果第一次登录且云端有数据就下载
+        isFirstLogin = mSharedPreferences.getBoolean(HandWriting.FIRST_LOGIN, true);
         // Set toolbar for this screen
         toolbar = (Toolbar) findViewById(R.id.main_toolbar);
         toolbar.setTitle("");
@@ -142,6 +165,9 @@ public class UserActivity extends AppCompatActivity {
 
     }
 
+    /**
+     * 新建按钮的监听事件，通过时间判断是点击还是拖动
+     */
     @SuppressLint("ClickableViewAccessibility")
     private void newBtnListener() {
         DisplayMetrics dm = getResources().getDisplayMetrics();
@@ -208,6 +234,11 @@ public class UserActivity extends AppCompatActivity {
 
     }
 
+    /**
+     * recycleview子项
+     * 点击事件
+     * 长按事件
+     */
     private void setListener() {
         noteRecycleViewAdapter.setOnItemClickListener(new NoteRecycleViewAdapter.OnItemClickListener() {
             @Override
@@ -246,19 +277,18 @@ public class UserActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
+        //填充菜单
         getMenuInflater().inflate(R.menu.activity_user_menu, menu);
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Find which menu item was selected
+        //找到选择的菜单项
         int menuItem = item.getItemId();
 
         // Do the task
         if (menuItem == R.id.user_update_attribute) {
-          /*  showWaitDialog("Updating...");
-            getDetails();*/
             takePhoto();
             return true;
         }
@@ -266,6 +296,9 @@ public class UserActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+    /**
+     * 拍照
+     */
     private void takePhoto() {
         String imageName = System.currentTimeMillis() + ".jpg";
         outputImage = new File(getExternalCacheDir(), imageName);
@@ -287,11 +320,6 @@ public class UserActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onBackPressed() {
-        exit();
-    }
-
-    @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
@@ -304,7 +332,7 @@ public class UserActivity extends AppCompatActivity {
                     } catch (FileNotFoundException e) {
                         e.printStackTrace();
                     }
-                    mRecycleView.setBackground(getBitmap(bitmap,outputImage.getAbsolutePath()));
+                    mRecycleView.setBackground(getBitmap(bitmap, outputImage.getAbsolutePath()));
                     //保存图片路径
                     SharedPreferences.Editor editor = mSharedPreferences.edit();
                     editor.putString(HandWriting.PICTURE_PATH, outputImage.getAbsolutePath());
@@ -353,15 +381,22 @@ public class UserActivity extends AppCompatActivity {
         }
     }
 
-    private Drawable getBitmap(Bitmap bitmap,String path) {
+    /**
+     * 根据bitmap和路径得到处理后的drawable
+     *
+     * @param bitmap
+     * @param path
+     * @return
+     */
+
+    private Drawable getBitmap(Bitmap bitmap, String path) {
         int degree = PublicFunction.getBitmapDegree(path);
         Bitmap bitmap1 = PublicFunction.rotateBitmapByDegree(
                 PublicFunction.getRoundedCornerBitmap(bitmap), degree);
-        Drawable drawable = new BitmapDrawable(getResources(), bitmap1);
-        return drawable;
+        return new BitmapDrawable(getResources(), bitmap1);
     }
 
-    // Handle when the a navigation item is selected
+    // 选择导航项时处理
     private void setNavDrawer() {
         nDrawer.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener() {
             @Override
@@ -372,20 +407,20 @@ public class UserActivity extends AppCompatActivity {
         });
     }
 
-    // Perform the action for the selected navigation item
+    // 执行所选导航项的操作
     private void performAction(MenuItem item) {
-        // Close the navigation drawer
+        //关闭导航抽屉
         mDrawer.closeDrawers();
 
-        // Find which item was selected
+        // 找到所选的项目
         switch (item.getItemId()) {
             case R.id.nav_user_add_attribute:
-                // Add a new attribute
+                // 添加笔迹
                 addNote();
                 break;
 
             case R.id.nav_user_change_password:
-                // Change password
+                // 更改密码
                 changePassword();
                 break;
             case R.id.nav_user_settings:
@@ -393,7 +428,7 @@ public class UserActivity extends AppCompatActivity {
                 showSettings();
                 break;
             case R.id.nav_user_sign_out:
-                // Sign out from this account
+                // 退出此账户
                 signOut();
                 break;
             case R.id.nav_user_about:
@@ -406,7 +441,7 @@ public class UserActivity extends AppCompatActivity {
         }
     }
 
-    // Get user details from CIP service
+    // 从CIP服务获取用户详细信息
     private void getDetails() {
         AppHelper.getPool().getUser(username).getDetailsInBackground(detailsHandler);
     }
@@ -455,25 +490,32 @@ public class UserActivity extends AppCompatActivity {
 
     // 退出登录
     private void signOut() {
+        Log.d(TAG, "signOut: " + useremail);
+        isExistInCloud(useremail, 0);
+        editor = mSharedPreferences.edit();
+        editor.putBoolean(HandWriting.FIRST_LOGIN, true);
+        editor.apply();
         user.signOut();
         exit();
     }
 
     // 初始化
     private void init() {
-        // Get the user name
-        Bundle extras = getIntent().getExtras();
         username = AppHelper.getCurrUser();
 
         user = AppHelper.getPool().getUser(username);
 
         getDetails();
-        setBackground();
-
+        //设置背景图片
+        setBackgroundPicture();
     }
 
-    private void setBackground() {
+    /**
+     * 设置主页面背景图片
+     */
+    private void setBackgroundPicture() {
         String pictureFile = mSharedPreferences.getString(HandWriting.PICTURE_PATH, "");
+        //如果没有设置图片就用原来的图片代替
         if (pictureFile.length() == 0) {
             mRecycleView.setBackground(ContextCompat.getDrawable(this, R.drawable.background));
         } else {
@@ -481,7 +523,7 @@ public class UserActivity extends AppCompatActivity {
             BitmapDrawable bd = (BitmapDrawable) picture;
             assert bd != null;
             Bitmap bm = bd.getBitmap();
-            mRecycleView.setBackground(getBitmap(bm,pictureFile));
+            mRecycleView.setBackground(getBitmap(bm, pictureFile));
         }
     }
 
@@ -492,6 +534,16 @@ public class UserActivity extends AppCompatActivity {
             closeWaitDialog();
             // Store details in the AppHandler
             AppHelper.setUserDetails(cognitoUserDetails);
+            Map userAttributes = cognitoUserDetails.getAttributes().getAttributes();
+            useremail = userAttributes.get("email").toString();
+            Log.d(TAG, "onSuccess: " + useremail);
+            if (isFirstLogin) {
+                showWaitDialog("Updating...");
+                isExistInCloud(useremail, 1);
+                editor = mSharedPreferences.edit();
+                editor.putBoolean(HandWriting.FIRST_LOGIN, false);
+                editor.apply();
+            }
             // Trusted devices?
             handleTrustedDevice();
         }
@@ -524,10 +576,6 @@ public class UserActivity extends AppCompatActivity {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.MATCH_PARENT);
 
-        //input.setLayoutParams(lp);
-        //input.requestFocus();
-        //builder.setView(input);
-
         builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
@@ -553,26 +601,6 @@ public class UserActivity extends AppCompatActivity {
         userDialog = builder.create();
         userDialog.show();
     }
-
-    // Callback handlers
-
-    UpdateAttributesHandler updateHandler = new UpdateAttributesHandler() {
-        @Override
-        public void onSuccess(List<CognitoUserCodeDeliveryDetails> attributesVerificationList) {
-            // Update successful
-            if (attributesVerificationList.size() > 0) {
-                showDialogMessage("Updated", "The updated attributes has to be verified", false);
-            }
-            getDetails();
-        }
-
-        @Override
-        public void onFailure(Exception exception) {
-            // Update failed
-            closeWaitDialog();
-            showDialogMessage("Update failed", AppHelper.formatException(exception), false);
-        }
-    };
 
     GenericHandler trustedDeviceHandler = new GenericHandler() {
         @Override
@@ -636,7 +664,179 @@ public class UserActivity extends AppCompatActivity {
         finish();
     }
 
+
     public void newNote(View view) {
         addNote();
+    }
+
+    /**
+     * 获取在data中数据库的文件
+     *
+     * @return 数据库文件
+     */
+    private static File getDBInData() {
+        File data = Environment.getDataDirectory();
+        return new File(data.toString()
+                + "/data/activitytest.example.lenovo.handwriting/databases/"
+                + MyDataBaseAdapter.DB_NAME);
+    }
+
+    public void isExistInCloud(final String userEmail, int mark) {
+        AmazonS3Client s3 = CognitoClientManager.getS3Client(this);
+        new GetFileListTask(s3, userEmail, mark).execute();
+    }
+
+    @SuppressLint("StaticFieldLeak")
+    public class GetFileListTask extends AsyncTask<Void, Void, Void> {
+
+        private List<S3ObjectSummary> s3ObjList = null;
+        AmazonS3Client mS3;
+        String email;
+        int m;
+
+        GetFileListTask(AmazonS3Client s3, String userEmail, int mark) {
+            mS3 = s3;
+            email = userEmail;
+            Log.d("SSS", "GetFileListTask: " + userEmail);
+            m = mark;
+        }
+
+        @Override
+        protected Void doInBackground(Void... voids) {
+            if (m == 0) {
+                uploadFile(email, mS3);
+            } else {
+                try {
+                    s3ObjList = mS3.listObjects(CognitoClientManager.BUCKET_NAME, email + "/").getObjectSummaries();
+                } catch (Exception e) {
+                    Log.d("SSS", "doInBackground: " + e.toString());
+                    return null;
+                }
+                if (s3ObjList != null) {
+                    for (S3ObjectSummary summary : s3ObjList) {
+                        if (summary.getKey().contains("db")) {
+                            android.util.Log.d("TAG", "数据库" + summary.getETag());
+                            return downloadFile(mS3, summary.getKey());
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
+     * 上传文件
+     *
+     * @param userEmail
+     * @param s3
+     */
+
+    private void uploadFile(final String userEmail, AmazonS3Client s3) {
+        try {
+            PutObjectResult result = s3.putObject(CognitoClientManager.BUCKET_NAME,
+                    userEmail + "/" + "activitytest.example.lenovo.handwriting.db", getDBInData());
+
+            handWriting.myDataBaseAdapter.deleteAllData();
+            Log.d("SSS", "upload: " + userEmail + "/" + "activitytest.example.lenovo.handwriting" + result.toString());
+        } catch (Exception e) {
+            Log.d("SSS", "upload1: " + e.toString());
+        }
+    }
+
+    /**
+     * 下载文件
+     *
+     * @param s3
+     * @param key
+     * @return
+     */
+    private Void downloadFile(AmazonS3Client s3, String key) {
+        S3Object s3Object = s3.getObject(CognitoClientManager.BUCKET_NAME, key);
+        try {
+            S3ObjectInputStream objectInputStream;
+            objectInputStream = s3Object.getObjectContent();
+            saveFile(objectInputStream);
+        } catch (Exception e) {
+            Log.d("SSS", "下载失败");
+            closeWaitDialog();
+        }
+        return null;
+    }
+
+    /**
+     * 保存文件
+     *
+     * @param inputStream 输入流
+     */
+    @SuppressLint("HandlerLeak")
+    private void saveFile(S3ObjectInputStream inputStream) {
+        try {
+            String pathDB = Environment.getDataDirectory()
+                    .toString()
+                    + "/data/activitytest.example.lenovo.handwriting/databases/"
+                    + "down_" + MyDataBaseAdapter.DB_NAME;
+            InputStream readerDB = new BufferedInputStream(inputStream);
+            File fileDB = new File(pathDB);
+            OutputStream writerDB = new BufferedOutputStream(
+                    new FileOutputStream(fileDB));
+            int readDB = -1;
+            while ((readDB = readerDB.read()) != -1) {
+                writerDB.write(readDB);
+            }
+            writerDB.flush();
+            writerDB.close();
+            readerDB.close();
+            if (dataBackAndRestore(fileDB, getDBInData())) {
+                closeWaitDialog();
+                ((Activity) this).runOnUiThread(new Runnable() {
+
+                    @Override
+                    public void run() {
+                       showNotes();
+                    }
+                });
+                Log.d("SSS", "save db success!");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.d("SSS", "save db failed!"+e.toString());
+        }
+    }
+
+    /**
+     * 还原数据
+     *
+     * @param srcDb 源数据库文件
+     * @param dstDb 目标数据库文件
+     * @return
+     */
+    private boolean dataBackAndRestore(File srcDb, File dstDb) {
+        try {
+            String currentDBPath = srcDb.toString();
+            String backupDBPath = dstDb.toString();
+            FileChannel src = new FileInputStream(currentDBPath).getChannel();
+            FileChannel dst = new FileOutputStream(backupDBPath).getChannel();
+            dst.transferFrom(src, 0, src.size());
+            src.close();
+            dst.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            return false;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {//如果返回键按下
+            moveTaskToBack(true);
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
     }
 }

@@ -7,6 +7,7 @@ import activitytest.example.lenovo.handwriting.operation.provider.MyDataBaseAdap
 public class HandWriting extends Application {
     public static String PREFS_NAME = "activitytest.example.lenovo.handwriting";
     public static String PICTURE_PATH = "picturepath";
+    public static String FIRST_LOGIN = "first_login";
 
     public MyDataBaseAdapter myDataBaseAdapter;
 
@@ -23,6 +24,7 @@ public class HandWriting extends Application {
          * if (Log.LOG_ENABLE) Log.e("TimersMe Application onTerminate()");
          */
         super.onTerminate();
+        myDataBaseAdapter.deleteAllData();
         if (myDataBaseAdapter != null) {
             myDataBaseAdapter.close();
         }

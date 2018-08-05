@@ -56,7 +56,7 @@ import java.util.Map;
 import activitytest.example.lenovo.handwriting.R;
 
 public class MainActivity extends AppCompatActivity {
-    private final String TAG = "MainActivity";
+    private final String TAG = "SSS";
 
     private NavigationView nDrawer;
     private DrawerLayout mDrawer;
@@ -64,7 +64,6 @@ public class MainActivity extends AppCompatActivity {
     private Toolbar toolbar;
     private AlertDialog userDialog;
     private ProgressDialog waitDialog;
-
 
     // Screen fields
     private EditText inUsername;
@@ -215,6 +214,9 @@ public class MainActivity extends AppCompatActivity {
                 if (continueSignIn) {
                     continueWithFirstTimeSignIn();
                 }
+                break;
+            default:
+                break;
         }
     }
 
@@ -271,6 +273,8 @@ public class MainActivity extends AppCompatActivity {
                 // 关于
                 Intent aboutAppActivity = new Intent(this, AboutApp.class);
                 startActivity(aboutAppActivity);
+                break;
+            default:
                 break;
 
         }
@@ -394,6 +398,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void launchUser() {
+        closeWaitDialog();
         Intent userActivity = new Intent(this, UserActivity.class);
         userActivity.putExtra("name", username);
         startActivityForResult(userActivity, 4);
@@ -520,6 +525,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onSuccess(CognitoUserSession cognitoUserSession, CognitoDevice device) {
             Log.e(TAG, "验证成功");
+            showWaitDialog("");
             AppHelper.setCurrSession(cognitoUserSession);
             AppHelper.newDevice(device);
            // closeWaitDialog();

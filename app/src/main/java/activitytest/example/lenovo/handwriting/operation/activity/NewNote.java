@@ -9,6 +9,7 @@ import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -199,8 +200,8 @@ public class NewNote extends AppCompatActivity {
      * @param view 为无用的参数
      */
     public void save(View view) {
-        String title = titleContent.getText().toString();
-        String note = noteContent.getText().toString();
+        String title = trimStart(titleContent.getText().toString());
+        String note = trimStart(noteContent.getText().toString());
         if (title.length() == 0) {
             displayToast("标题不能为空");
             titleContent.requestFocus();
@@ -220,6 +221,30 @@ public class NewNote extends AppCompatActivity {
             exit(true);
         }
     }
+
+    /**
+     * 把String字符串开头的空格去掉，结尾的空格不管
+     */
+    public String trimStart(String str) {
+        if (TextUtils.isEmpty(str)) {
+            return str;
+        }
+
+        final char[] value = str.toCharArray();
+
+        int start = 0, last = str.length();
+        while ((start < last) && (value[start] == ' ')) {
+            start++;
+        }
+        if (start == 0) {
+            return str;
+        }
+        if (start >= last) {
+            return "";
+        }
+        return str.substring(start, last);
+    }
+
 
     private void exit(boolean refresh) {
         Intent intent = new Intent();
