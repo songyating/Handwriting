@@ -20,6 +20,7 @@ package activitytest.example.lenovo.handwriting.myuserpools;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -29,6 +30,8 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -37,7 +40,6 @@ import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
-import android.support.v4.content.ContextCompat;
 import android.support.v4.content.FileProvider;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
@@ -114,6 +116,7 @@ public class UserActivity extends AppCompatActivity {
     private String useremail;
 
     private Boolean isFirstLogin;
+    private Boolean isStory;
 
     private SharedPreferences mSharedPreferences;
     private SharedPreferences.Editor editor;
@@ -245,6 +248,8 @@ public class UserActivity extends AppCompatActivity {
             public void onItemClick(int position) {
                 Intent look = new Intent(UserActivity.this, NewNote.class);
                 look.putExtra("id", position);
+                look.putExtra("isStory",isStory);
+
                 startActivityForResult(look, 23);
             }
 
@@ -257,7 +262,12 @@ public class UserActivity extends AppCompatActivity {
                 builder.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int id) {
-                        handWriting.myDataBaseAdapter.deleteData(position);
+                        isStory = mSharedPreferences.getBoolean(HandWriting.IS_STORY,false);
+                        if (isStory) {
+                            handWriting.myDataBaseAdapter.deleteData(position);
+                        }else{
+                            handWriting.myDataBaseAdapter.updateStoryColumns(position);
+                        }
                         showNotes();
                     }
                 });
@@ -300,7 +310,7 @@ public class UserActivity extends AppCompatActivity {
      * 拍照
      */
     private void takePhoto() {
-        String imageName = System.currentTimeMillis() + ".jpg";
+        String imageName = "background.jpg";
         outputImage = new File(getExternalCacheDir(), imageName);
         try {
             outputImage.createNewFile();
@@ -340,15 +350,15 @@ public class UserActivity extends AppCompatActivity {
                 }
 
                 break;
-            case 20:
-                // Settings
+           /* case 20:
+                // 光阴故事
                 if (resultCode == RESULT_OK) {
                     boolean refresh = data.getBooleanExtra("refresh", true);
                     if (refresh) {
                         showNotes();
                     }
                 }
-                break;
+                break;*/
             case 21:
                 // Verify attributes
                 if (resultCode == RESULT_OK) {
@@ -425,7 +435,10 @@ public class UserActivity extends AppCompatActivity {
                 break;
             case R.id.nav_user_settings:
                 // Show user settings
-                showSettings();
+                showStorys();
+                break;
+            case R.id.nav_user_verify_attribute:
+                showCustomNotes();
                 break;
             case R.id.nav_user_sign_out:
                 // 退出此账户
@@ -449,9 +462,16 @@ public class UserActivity extends AppCompatActivity {
     // 显示笔迹列表
     private void showNotes() {
         noteRecycleViewAdapter.clearItems();
-        Cursor noteCursor = handWriting.myDataBaseAdapter.fetchAllNoteData();
+        Cursor noteCursor;
+        isStory = mSharedPreferences.getBoolean(HandWriting.IS_STORY,false);
+        if (!isStory){
+            noteCursor = handWriting.myDataBaseAdapter.fetchAllNotStoryNoteData();
+        }else{
+            noteCursor = handWriting.myDataBaseAdapter.fetchAllStoryNoteData();
+        }
+
         Log.d(TAG, "showNotes: " + handWriting.myDataBaseAdapter);
-        Log.d(TAG, "showNotes: " + noteCursor.getCount());
+       // Log.d(TAG, "showNotes: " + noteCursor.getCount());
         try {
             if (noteCursor != null && noteCursor.moveToFirst()) {
                 for (int i = 0; i < noteCursor.getCount(); i++) {
@@ -468,11 +488,23 @@ public class UserActivity extends AppCompatActivity {
     }
 
 
-    // Show user MFA Settings
-    private void showSettings() {
-        Intent userSettingsActivity = new Intent(this, SettingsActivity.class);
-        startActivityForResult(userSettingsActivity, 20);
+    // 显示光阴故事
+    private void showStorys() {
+        editor = mSharedPreferences.edit();
+        editor.putBoolean(HandWriting.IS_STORY, true);
+        editor.apply();
+        showNotes();
     }
+
+    // 显示日常笔迹
+    private void showCustomNotes() {
+        editor = mSharedPreferences.edit();
+        editor.putBoolean(HandWriting.IS_STORY, false);
+        editor.apply();
+        showNotes();
+    }
+
+
 
     // 新建笔迹
     private void addNote() {
@@ -491,12 +523,21 @@ public class UserActivity extends AppCompatActivity {
     // 退出登录
     private void signOut() {
         Log.d(TAG, "signOut: " + useremail);
+        Boolean flag = true;
         isExistInCloud(useremail, 0);
         editor = mSharedPreferences.edit();
         editor.putBoolean(HandWriting.FIRST_LOGIN, true);
         editor.apply();
         user.signOut();
-        exit();
+        ConnectivityManager manager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        NetworkInfo networkinfo = manager.getActiveNetworkInfo();
+
+        if (manager == null || networkinfo == null || !networkinfo.isAvailable()) {
+            showDialogMessage("Warning", "未联网的情况下退出会导致部分数据丢失", true);
+        } else {
+            exit();
+        }
     }
 
     // 初始化
@@ -516,9 +557,9 @@ public class UserActivity extends AppCompatActivity {
     private void setBackgroundPicture() {
         String pictureFile = mSharedPreferences.getString(HandWriting.PICTURE_PATH, "");
         //如果没有设置图片就用原来的图片代替
-        if (pictureFile.length() == 0) {
-            mRecycleView.setBackground(ContextCompat.getDrawable(this, R.drawable.background));
-        } else {
+        if (pictureFile.length() != 0) {
+        /*    mRecycleView.setBackground(ContextCompat.getDrawable(this, R.drawable.bear));
+        } else {*/
             Drawable picture = Drawable.createFromPath(pictureFile);
             BitmapDrawable bd = (BitmapDrawable) picture;
             assert bd != null;
@@ -641,6 +682,11 @@ public class UserActivity extends AppCompatActivity {
                     }
                 }
             }
+        }).setPositiveButton("Cancel", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                userDialog.dismiss();
+            }
         });
         userDialog = builder.create();
         userDialog.show();
@@ -710,6 +756,7 @@ public class UserActivity extends AppCompatActivity {
                     s3ObjList = mS3.listObjects(CognitoClientManager.BUCKET_NAME, email + "/").getObjectSummaries();
                 } catch (Exception e) {
                     Log.d("SSS", "doInBackground: " + e.toString());
+                    closeWaitDialog();
                     return null;
                 }
                 if (s3ObjList != null) {
@@ -719,6 +766,8 @@ public class UserActivity extends AppCompatActivity {
                             return downloadFile(mS3, summary.getKey());
                         }
                     }
+                }else{
+                    closeWaitDialog();
                 }
             }
             return null;
@@ -793,7 +842,7 @@ public class UserActivity extends AppCompatActivity {
 
                     @Override
                     public void run() {
-                       showNotes();
+                        showNotes();
                     }
                 });
                 Log.d("SSS", "save db success!");
@@ -801,7 +850,7 @@ public class UserActivity extends AppCompatActivity {
 
         } catch (Exception e) {
             e.printStackTrace();
-            Log.d("SSS", "save db failed!"+e.toString());
+            Log.d("SSS", "save db failed!" + e.toString());
         }
     }
 

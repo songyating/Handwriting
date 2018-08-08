@@ -8,6 +8,7 @@ public class HandWriting extends Application {
     public static String PREFS_NAME = "activitytest.example.lenovo.handwriting";
     public static String PICTURE_PATH = "picturepath";
     public static String FIRST_LOGIN = "first_login";
+    public static String IS_STORY = "is_story";
 
     public MyDataBaseAdapter myDataBaseAdapter;
 

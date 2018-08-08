@@ -60,7 +60,7 @@ public class ForgotPasswordActivity extends AppCompatActivity {
         });
 
         TextView main_title = (TextView) findViewById(R.id.forgot_password_toolbar_title);
-        main_title.setText("Forgot password");
+        main_title.setText("忘记密码");
 
         init();
     }
@@ -77,7 +77,7 @@ public class ForgotPasswordActivity extends AppCompatActivity {
                 String dest = extras.getString("destination");
                 String delMed = extras.getString("deliveryMed");
                 TextView message = (TextView) findViewById(R.id.textViewForgotPasswordMessage);
-                String textToDisplay = "Code to set a new password was sent to " + dest + " via "+delMed;
+                String textToDisplay = "已发送设置新密码的验证码至 " + dest + " via "+delMed;
                 message.setText(textToDisplay);
             }
         }
@@ -140,7 +140,7 @@ public class ForgotPasswordActivity extends AppCompatActivity {
 
         if (newPassword == null || newPassword.length() < 1) {
             TextView label = (TextView) findViewById(R.id.textViewForgotPasswordUserIdMessage);
-            label.setText(passwordInput.getHint() + " cannot be empty");
+            label.setText(passwordInput.getHint() + " 不能为空");
             passwordInput.setBackground(ContextCompat.getDrawable(ForgotPasswordActivity.this,R.drawable.text_border_error));
             return;
         }
@@ -149,7 +149,7 @@ public class ForgotPasswordActivity extends AppCompatActivity {
 
         if (verCode == null || verCode.length() < 1) {
             TextView label = (TextView) findViewById(R.id.textViewForgotPasswordCodeMessage);
-            label.setText(codeInput.getHint() + " cannot be empty");
+            label.setText(codeInput.getHint() + " 不能为空");
             codeInput.setBackground(ContextCompat.getDrawable(ForgotPasswordActivity.this,R.drawable.text_border_error));
             return;
         }

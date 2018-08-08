@@ -194,7 +194,7 @@ public class MainActivity extends AppCompatActivity {
                     String code = data.getStringExtra("mfacode");
                     if (code != null) {
                         if (code.length() > 0) {
-                            showWaitDialog("Signing in...");
+                            showWaitDialog("登录中...");
                             multiFactorAuthenticationContinuation.setMfaCode(code);
                             multiFactorAuthenticationContinuation.continueTask();
                         } else {
@@ -295,7 +295,7 @@ public class MainActivity extends AppCompatActivity {
         username = inUsername.getText().toString();
         if (username == null || username.length() < 1) {
             TextView label = (TextView) findViewById(R.id.textViewUserIdMessage);
-            label.setText(inUsername.getHint() + " cannot be empty");
+            label.setText(inUsername.getHint() + " 不能为空");
             inUsername.setBackground(ContextCompat.getDrawable(this, R.drawable.text_border_error));
             return;
         }
@@ -305,7 +305,7 @@ public class MainActivity extends AppCompatActivity {
         password = inPassword.getText().toString();
         if (password == null || password.length() < 1) {
             TextView label = (TextView) findViewById(R.id.textViewUserPasswordMessage);
-            label.setText(inPassword.getHint() + " cannot be empty");
+            label.setText(inPassword.getHint() + " 不能为空");
             inPassword.setBackground(ContextCompat.getDrawable(this, R.drawable.text_border_error));
             return;
         }

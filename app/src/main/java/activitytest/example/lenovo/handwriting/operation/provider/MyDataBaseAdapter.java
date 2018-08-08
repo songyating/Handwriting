@@ -19,7 +19,7 @@ import java.text.SimpleDateFormat;
 public class MyDataBaseAdapter {
     public final static String DB_NAME = "Handwriting.db"; // 数据库名称
     private final static String DB_TABLE_NOTE = "NoteInfos"; // 数据库表名
-    private final static int DB_VERSION = 1; // 数据库版本
+    private final static int DB_VERSION = 2; // 数据库版本
     private final static SimpleDateFormat DB_TIMESTAMP_FORMAT = new SimpleDateFormat(
             "yyyy-MM-dd HH:mm:ss");
 
@@ -31,13 +31,15 @@ public class MyDataBaseAdapter {
         public static final String DATE = "date";//日期时间
         public static final String TITLE = "title";//日记标题
         public static final String CONTENT = "content";// 日记内容
+        public static final String STORY = "story";//是否是故事
 
-        static final String[] NOTES_QUERY_COLUMNS = {_ID, DATE, TITLE, CONTENT};
+        static final String[] NOTES_QUERY_COLUMNS = {_ID, DATE, TITLE, CONTENT, STORY};
 
         public static final int _ID_INDEX = 0;
         public static final int DATE_INDEX = 1;
         public static final int TITLE_INDEX = 2;
         public static final int CONTENT_INDEX = 3;
+        public static final int STORY_INDEX = 4;
     }
 
     // 创建Timer表
@@ -45,7 +47,7 @@ public class MyDataBaseAdapter {
             + DB_TABLE_NOTE + "(" + NotesColumns._ID
             + " INTEGER PRIMARY KEY ," + NotesColumns.DATE + " INTEGER,"
             + NotesColumns.TITLE + " VARCHAR(100)," + NotesColumns.CONTENT
-            + " VARCHAR(200));";
+            + " VARCHAR(200)," + NotesColumns.STORY + " INTEGER);";
     private Context mContext = null; // 本地Context对象
 
 
@@ -161,6 +163,7 @@ public class MyDataBaseAdapter {
         initialValues.put(NotesColumns.CONTENT, noteInfo.getContent());
         initialValues.put(NotesColumns.TITLE, noteInfo.getTitle());
         initialValues.put(NotesColumns.DATE, noteInfo.getDate());
+        initialValues.put(NotesColumns.STORY, noteInfo.getStory());
         //initialValues.put(NotesColumns.IMAGE,noteInfo.getImageUri());
         try {
             return mSQLiteDatabase.insert(DB_TABLE_NOTE, null, initialValues);
@@ -205,6 +208,34 @@ public class MyDataBaseAdapter {
         }
     }
 
+    public Cursor fetchAllNotStoryNoteData() {
+        try {
+            Cursor cursor = mSQLiteDatabase.query(true, DB_TABLE_NOTE,
+                    NotesColumns.NOTES_QUERY_COLUMNS, NotesColumns.STORY + "=" + 0, null,
+                    null, null, "date desc", null);
+            cursor.moveToFirst();
+            return cursor;
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            Log.d("SSS", "fetchAllNoteData: " + e.toString());
+            return null;
+        }
+    }
+
+    public Cursor fetchAllStoryNoteData() {
+        try {
+            Cursor cursor = mSQLiteDatabase.query(true, DB_TABLE_NOTE,
+                    NotesColumns.NOTES_QUERY_COLUMNS, NotesColumns.STORY + "=" + 1
+                    , null, null, null, "date desc", null);
+            cursor.moveToFirst();
+            return cursor;
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            Log.d("SSS", "fetchAllNoteData: " + e.toString());
+            return null;
+        }
+    }
+
     /***
      * 通过各个字段值修改NOTE表数据
      *
@@ -218,7 +249,21 @@ public class MyDataBaseAdapter {
         args.put(NotesColumns.DATE, noteInfo.getDate());
         args.put(NotesColumns.TITLE, noteInfo.getTitle());
         args.put(NotesColumns.CONTENT, noteInfo.getContent());
+        args.put(NotesColumns.STORY, noteInfo.getStory());
 
+        return mSQLiteDatabase.update(DB_TABLE_NOTE, args, NotesColumns._ID
+                + "=" + noteID, null) > 0;
+    }
+
+    /***
+     * 通过各个字段值修改NOTE表数据
+     *
+     * @param noteID
+     * @return
+     */
+    public boolean updateStoryColumns(int noteID) {
+        ContentValues args = new ContentValues();
+        args.put(NotesColumns.STORY, 1);
         return mSQLiteDatabase.update(DB_TABLE_NOTE, args, NotesColumns._ID
                 + "=" + noteID, null) > 0;
     }

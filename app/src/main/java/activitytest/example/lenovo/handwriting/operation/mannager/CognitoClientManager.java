@@ -45,7 +45,8 @@ public class CognitoClientManager {
      * the sample (https://console.aws.amazon.com/s3/). After creating a bucket,
      * put it's name in the field below.
      */
-    public static final String BUCKET_NAME = "timer4meplus-userdata";
+    /*public static final String BUCKET_NAME = "timer4meplus-userdata";*/
+    public static final String BUCKET_NAME = "xhgtest20170708";
     /*
      * Region of your bucket.
      */

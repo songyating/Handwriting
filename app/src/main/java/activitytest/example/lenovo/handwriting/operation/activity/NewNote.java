@@ -5,7 +5,9 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
+import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.RequiresApi;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -22,6 +24,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.gson.Gson;
 import com.iflytek.cloud.RecognizerResult;
 import com.iflytek.cloud.SpeechConstant;
 import com.iflytek.cloud.SpeechError;
@@ -29,9 +32,7 @@ import com.iflytek.cloud.SpeechUtility;
 import com.iflytek.cloud.ui.RecognizerDialog;
 import com.iflytek.cloud.ui.RecognizerDialogListener;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.json.JSONTokener;
+import java.util.ArrayList;
 
 import activitytest.example.lenovo.handwriting.HandWriting;
 import activitytest.example.lenovo.handwriting.R;
@@ -72,6 +73,7 @@ public class NewNote extends AppCompatActivity {
     private int dataId;//数据的id,用来获取所查看数据的id
     private boolean isNew = true;//是否要新建笔迹，true：新建笔迹  flase：查看笔迹
     private boolean isEdit = false;//查看转为编辑
+    private boolean isStory = false;//true:查看的为光阴故事 false:查看的为日常笔记
     private NoteInfo noteInfo;
     private String titleContentInfo;
     private String noteContentInfo;
@@ -89,6 +91,7 @@ public class NewNote extends AppCompatActivity {
 
         Intent intent = getIntent();
         dataId = intent.getIntExtra("id", 0);
+        isStory = intent.getBooleanExtra("isStory",false);
         if (dataId != 0) {
             isNew = false;//查看笔迹
             init(dataId);//初始化控件内容
@@ -209,10 +212,16 @@ public class NewNote extends AppCompatActivity {
             displayToast("笔迹内容不能为空");
             noteContent.requestFocus();
         } else {
+
             NoteInfo noteInfo = new NoteInfo();
             noteInfo.setContent(note);
             noteInfo.setDate(System.currentTimeMillis());
             noteInfo.setTitle(title);
+            if (isStory) {
+                noteInfo.setStory(1);
+            }else{
+                noteInfo.setStory(0);
+            }
             if (isNew) {
                 handWriting.myDataBaseAdapter.insertData(noteInfo);
             } else {
@@ -332,9 +341,12 @@ public class NewNote extends AppCompatActivity {
             dialog.setParameter(SpeechConstant.ACCENT, "mandarin");
 
             dialog.setListener(new RecognizerDialogListener() {
+                @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
                 @Override
                 public void onResult(RecognizerResult recognizerResult, boolean b) {
-                    printResult(recognizerResult);
+                   if (!b) {
+                       printResult(recognizerResult);
+                   }
                 }
 
                 @Override
@@ -359,51 +371,59 @@ public class NewNote extends AppCompatActivity {
         }
     }
 
+    /**
+     * 显示听写的结果
+     * @param result
+     */
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     private void printResult(RecognizerResult result) {
         String text = parseIatResult(result.getResultString());
+        String content;
         //填写的位置
         if (titleContent.hasFocus()) {
-            titleContent.setText(text);
+            content = titleContent.getText().toString()+text;
+            titleContent.setText(content);
+            //设置光标的位置为末尾
+            titleContent.setSelection(content.length());
         } else {
-            noteContent.setText(text);
+            content = noteContent.getText().toString()+text;
+            noteContent.setText(content);
+            noteContent.setSelection(content.length());
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     public static String parseIatResult(String json) {
-        StringBuffer ret = new StringBuffer();
-        try {
-            JSONTokener tokener = new JSONTokener(json);
-            JSONObject joResult = new JSONObject(tokener);
+        Gson gson = new Gson();
+        Voice voiceBean = gson.fromJson(json, Voice.class);
 
-            JSONArray words = joResult.getJSONArray("ws");
-            for (int i = 0; i < words.length(); i++) {
-                // 转写结果词，默认使用第一个结果
-                JSONArray items = words.getJSONObject(i).getJSONArray("cw");
-                JSONObject obj = items.getJSONObject(0);
-                ret.append(obj.getString("w"));
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+        StringBuilder sb = new StringBuilder();
+        ArrayList<Voice.WSBean> ws = voiceBean.ws;
+        for (Voice.WSBean wsBean : ws) {
+            String word = wsBean.cw.get(0).w;
+            sb.append(word);
         }
-        return ret.toString();
+        return sb.toString();
     }
+    /**
+     * 语音对象封装
+     */
+    public class Voice {
 
+        ArrayList<WSBean> ws;
+
+        class WSBean {
+            ArrayList<CWBean> cw;
+        }
+
+        class CWBean {
+            String w;
+        }
+    }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         switch (requestCode) {
-           /* case TAKE_PHOTO:
-                if (resultCode == RESULT_OK) {
-                    try {
-                        Bitmap bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(imageUri));
-                        Drawable drawable = new BitmapDrawable(getResources(), bitmap);
-                        viewBackground.setBackground(drawable);
-
-                    } catch (FileNotFoundException e) {
-                        e.printStackTrace();
-                    }
-                }
-                break;*/
             default:
                 break;
         }

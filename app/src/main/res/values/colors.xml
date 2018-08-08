@@ -9,7 +9,7 @@
     <color name="informative_message">#329AD6</color>
     <color name="button_pressed">#FDDBD0</color>
     <color name="text_border_default">#FEDBD0</color>
-    <color name="card_view">#ffeae6</color>
+    <color name="card_view">#f2ffeae6</color>
     <color name="text_border_selected">#FDDBD0</color>
     <color name="warning">#E94700</color>
     <color name="white">#FFFFFF</color>

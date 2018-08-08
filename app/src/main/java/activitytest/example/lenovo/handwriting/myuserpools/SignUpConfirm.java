@@ -70,7 +70,7 @@ public class SignUpConfirm extends AppCompatActivity {
         });
 
         TextView main_title = (TextView) findViewById(R.id.confirm_toolbar_title);
-        main_title.setText("Confirm");
+        main_title.setText("激活账号");
 
         init();
     }
@@ -93,14 +93,14 @@ public class SignUpConfirm extends AppCompatActivity {
 
                     TextView screenSubtext = (TextView) findViewById(R.id.textViewConfirmSubtext_1);
                     if (dest != null && delMed != null && dest.length() > 0 && delMed.length() > 0) {
-                        screenSubtext.setText("A confirmation code was sent to " + dest + " via " + delMed);
+                        screenSubtext.setText("已发送确认码至 " + dest + " via " + delMed);
                     } else {
-                        screenSubtext.setText("A confirmation code was sent");
+                        screenSubtext.setText("已发送确认码");
                     }
                 }
             } else {
                 TextView screenSubtext = (TextView) findViewById(R.id.textViewConfirmSubtext_1);
-                screenSubtext.setText("Request for a confirmation code or confirm with the code you already have.");
+                screenSubtext.setText("请求确认码或使用您已有的确认码进行确认.");
             }
 
         }
@@ -181,14 +181,14 @@ public class SignUpConfirm extends AppCompatActivity {
 
         if (userName == null || userName.length() < 1) {
             TextView label = (TextView) findViewById(R.id.textViewConfirmUserIdMessage);
-            label.setText(username.getHint() + " cannot be empty");
+            label.setText(username.getHint() + " 不能为空");
             username.setBackground(ContextCompat.getDrawable(this,R.drawable.text_border_error));
             return;
         }
 
         if (confirmCode == null || confirmCode.length() < 1) {
             TextView label = (TextView) findViewById(R.id.textViewConfirmCodeMessage);
-            label.setText(confCode.getHint() + " cannot be empty");
+            label.setText(confCode.getHint() + " 不能为空");
             confCode.setBackground(ContextCompat.getDrawable(this,R.drawable.text_border_error));
             return;
         }
@@ -200,7 +200,7 @@ public class SignUpConfirm extends AppCompatActivity {
         userName = username.getText().toString();
         if (userName == null || userName.length() < 1) {
             TextView label = (TextView) findViewById(R.id.textViewConfirmUserIdMessage);
-            label.setText(username.getHint() + " cannot be empty");
+            label.setText(username.getHint() + " 不能为空");
             username.setBackground(ContextCompat.getDrawable(this,R.drawable.text_border_error));
             return;
         }
@@ -211,20 +211,20 @@ public class SignUpConfirm extends AppCompatActivity {
     GenericHandler confHandler = new GenericHandler() {
         @Override
         public void onSuccess() {
-            showDialogMessage("Success!", userName + " has been confirmed!", true);
+            showDialogMessage("成功!", userName + " 已经确认!", true);
         }
 
         @Override
         public void onFailure(Exception exception) {
             TextView label = (TextView) findViewById(R.id.textViewConfirmUserIdMessage);
-            label.setText("Confirmation failed!");
+            label.setText("确认失败!");
             username.setBackground(ContextCompat.getDrawable(SignUpConfirm.this,R.drawable.text_border_error));
 
             label = (TextView) findViewById(R.id.textViewConfirmCodeMessage);
-            label.setText("Confirmation failed!");
+            label.setText("确认失败!");
             confCode.setBackground(ContextCompat.getDrawable(SignUpConfirm.this,R.drawable.text_border_error));
 
-            showDialogMessage("Confirmation failed", AppHelper.formatException(exception), false);
+            showDialogMessage("确认失败", AppHelper.formatException(exception), false);
         }
     };
 
@@ -232,18 +232,18 @@ public class SignUpConfirm extends AppCompatActivity {
         @Override
         public void onSuccess(CognitoUserCodeDeliveryDetails cognitoUserCodeDeliveryDetails) {
             TextView mainTitle = (TextView) findViewById(R.id.textViewConfirmTitle);
-            mainTitle.setText("Confirm your account");
+            mainTitle.setText("确认您的帐户");
             confCode = (EditText) findViewById(R.id.editTextConfirmCode);
             confCode.requestFocus();
-            showDialogMessage("Confirmation code sent.", "Code sent to " + cognitoUserCodeDeliveryDetails.getDestination() + " via " + cognitoUserCodeDeliveryDetails.getDeliveryMedium() + ".", false);
+            showDialogMessage("发送确认码.", "确认码发送至 " + cognitoUserCodeDeliveryDetails.getDestination() + " via " + cognitoUserCodeDeliveryDetails.getDeliveryMedium() + ".", false);
         }
 
         @Override
         public void onFailure(Exception exception) {
             TextView label = (TextView) findViewById(R.id.textViewConfirmUserIdMessage);
-            label.setText("Confirmation code resend failed");
+            label.setText("确认码重新发送失败");
             username.setBackground(ContextCompat.getDrawable(SignUpConfirm.this,R.drawable.text_border_error));
-            showDialogMessage("Confirmation code request has failed", AppHelper.formatException(exception), false);
+            showDialogMessage("确认码请求失败", AppHelper.formatException(exception), false);
         }
     };
 

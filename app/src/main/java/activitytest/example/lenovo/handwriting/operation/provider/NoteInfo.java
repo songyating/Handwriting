@@ -17,15 +17,18 @@ public class NoteInfo {
     private long date;
     private String title;
     private String content;
+    private int story;
 
-    public NoteInfo( Cursor cursor){
+    public NoteInfo(Cursor cursor) {
         this.id = cursor.getInt(NotesColumns._ID_INDEX);
         this.date = cursor.getLong(NotesColumns.DATE_INDEX);
         this.content = cursor.getString(NotesColumns.CONTENT_INDEX);
         this.title = cursor.getString(NotesColumns.TITLE_INDEX);
-        Log.d("Main", "NoteInfo: "+id+" "+date+" "+content+" "+title);
+        this.story = cursor.getInt(NotesColumns.STORY_INDEX);
+        Log.d("Main", "NoteInfo: " + id + " " + date + " " + content + " " + title);
     }
-    public NoteInfo(){
+
+    public NoteInfo() {
 
     }
 
@@ -59,6 +62,14 @@ public class NoteInfo {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public int getStory() {
+        return story;
+    }
+
+    public void setStory(int story) {
+        this.story = story;
     }
 
 }
