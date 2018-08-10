@@ -9,6 +9,7 @@ public class HandWriting extends Application {
     public static String PICTURE_PATH = "picturepath";
     public static String FIRST_LOGIN = "first_login";
     public static String IS_STORY = "is_story";
+    public static String USER_NAME_LIST="user_name_list";
 
     public MyDataBaseAdapter myDataBaseAdapter;
 

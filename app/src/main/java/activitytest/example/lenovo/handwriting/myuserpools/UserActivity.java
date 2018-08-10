@@ -99,6 +99,7 @@ public class UserActivity extends AppCompatActivity {
     private DrawerLayout mDrawer;
     private ActionBarDrawerToggle mDrawerToggle;
     private Toolbar toolbar;
+    private TextView main_title;
     private AlertDialog userDialog;
     private ProgressDialog waitDialog;
     private RecyclerView mRecycleView;
@@ -117,6 +118,7 @@ public class UserActivity extends AppCompatActivity {
 
     private Boolean isFirstLogin;
     private Boolean isStory;
+    private Boolean isNull = false;
 
     private SharedPreferences mSharedPreferences;
     private SharedPreferences.Editor editor;
@@ -140,7 +142,7 @@ public class UserActivity extends AppCompatActivity {
         toolbar = (Toolbar) findViewById(R.id.main_toolbar);
         toolbar.setTitle("");
 
-        TextView main_title = (TextView) findViewById(R.id.main_toolbar_title);
+        main_title = (TextView) findViewById(R.id.main_toolbar_title);
         main_title.setText("笔 迹");
         setSupportActionBar(toolbar);
 
@@ -248,7 +250,7 @@ public class UserActivity extends AppCompatActivity {
             public void onItemClick(int position) {
                 Intent look = new Intent(UserActivity.this, NewNote.class);
                 look.putExtra("id", position);
-                look.putExtra("isStory",isStory);
+                look.putExtra("isStory", isStory);
 
                 startActivityForResult(look, 23);
             }
@@ -262,10 +264,10 @@ public class UserActivity extends AppCompatActivity {
                 builder.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int id) {
-                        isStory = mSharedPreferences.getBoolean(HandWriting.IS_STORY,false);
+                        isStory = mSharedPreferences.getBoolean(HandWriting.IS_STORY, false);
                         if (isStory) {
                             handWriting.myDataBaseAdapter.deleteData(position);
-                        }else{
+                        } else {
                             handWriting.myDataBaseAdapter.updateStoryColumns(position);
                         }
                         showNotes();
@@ -435,6 +437,7 @@ public class UserActivity extends AppCompatActivity {
                 break;
             case R.id.nav_user_settings:
                 // Show user settings
+
                 showStorys();
                 break;
             case R.id.nav_user_verify_attribute:
@@ -463,15 +466,19 @@ public class UserActivity extends AppCompatActivity {
     private void showNotes() {
         noteRecycleViewAdapter.clearItems();
         Cursor noteCursor;
-        isStory = mSharedPreferences.getBoolean(HandWriting.IS_STORY,false);
-        if (!isStory){
+        isStory = mSharedPreferences.getBoolean(HandWriting.IS_STORY, false);
+        if (!isStory) {
+            main_title.setText("笔迹");
+            newBtn.setVisibility(View.VISIBLE);
             noteCursor = handWriting.myDataBaseAdapter.fetchAllNotStoryNoteData();
-        }else{
+        } else {
+            main_title.setText("光阴故事");
+            newBtn.setVisibility(View.GONE);
             noteCursor = handWriting.myDataBaseAdapter.fetchAllStoryNoteData();
         }
 
         Log.d(TAG, "showNotes: " + handWriting.myDataBaseAdapter);
-       // Log.d(TAG, "showNotes: " + noteCursor.getCount());
+        // Log.d(TAG, "showNotes: " + noteCursor.getCount());
         try {
             if (noteCursor != null && noteCursor.moveToFirst()) {
                 for (int i = 0; i < noteCursor.getCount(); i++) {
@@ -503,7 +510,6 @@ public class UserActivity extends AppCompatActivity {
         editor.apply();
         showNotes();
     }
-
 
 
     // 新建笔迹
@@ -592,7 +598,7 @@ public class UserActivity extends AppCompatActivity {
         @Override
         public void onFailure(Exception exception) {
             closeWaitDialog();
-            showDialogMessage("Could not fetch user details!", AppHelper.formatException(exception), true);
+            showDialogMessage("无法获取用户详细信息!", AppHelper.formatException(exception), true);
         }
     };
 
@@ -754,20 +760,23 @@ public class UserActivity extends AppCompatActivity {
             } else {
                 try {
                     s3ObjList = mS3.listObjects(CognitoClientManager.BUCKET_NAME, email + "/").getObjectSummaries();
+                    if (s3ObjList.size() == 0) {
+                        closeWaitDialog();
+                       // Toast.makeText(handWriting, "点击新建按钮，开始你的笔迹", Toast.LENGTH_SHORT).show();
+                    }
+                    Log.d(TAG, "doInBackgrounds3Object: " + s3ObjList);
                 } catch (Exception e) {
                     Log.d("SSS", "doInBackground: " + e.toString());
-                    closeWaitDialog();
                     return null;
                 }
+                Log.d(TAG, "doInBackgrounds3Object1: " + s3ObjList);
                 if (s3ObjList != null) {
                     for (S3ObjectSummary summary : s3ObjList) {
                         if (summary.getKey().contains("db")) {
-                            android.util.Log.d("TAG", "数据库" + summary.getETag());
+                            Log.d("TAG", "数据库" + summary.getETag());
                             return downloadFile(mS3, summary.getKey());
                         }
                     }
-                }else{
-                    closeWaitDialog();
                 }
             }
             return null;

@@ -65,7 +65,7 @@ public class MainActivity extends AppCompatActivity {
     private AlertDialog userDialog;
     private ProgressDialog waitDialog;
 
-    // Screen fields
+    // 屏幕字段
     private EditText inUsername;
     private EditText inPassword;
 
@@ -441,7 +441,7 @@ public class MainActivity extends AppCompatActivity {
         continuation.continueTask();
     }
 
-    // initialize app
+    // 初始化
     private void initApp() {
         inUsername = (EditText) findViewById(R.id.editTextUserId);
         inUsername.addTextChangedListener(new TextWatcher() {
