@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <group
+        android:id="@+id/group_user_add_attribute"
+        android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_user_add_attribute"
+            android:title="新建笔迹" />
+    </group>
+
+    <group
+        android:id="@+id/group_user_verify_attribute"
+        android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_user_verify_attribute"
+            android:title="日常笔迹" />
+    </group>
+
+    <group
+        android:id="@+id/group_user_settings"
+        android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_user_settings"
+            android:title="光阴故事" />
+    </group>
+
+    <group
+        android:id="@+id/group_user_change_password"
+        android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_user_change_password"
+            android:title="更改密码" />
+    </group>
+
+    <!--<group
+        android:id="@+id/group_user_trusted_devices"
+        android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_user_trusted_devices"
+            android:title="你的设备" />
+    </group>
+-->
+    <group
+        android:id="@+id/group_user_signout"
+        android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_user_sign_out"
+            android:title="退出登录" />
+    </group>
+
+    <group
+        android:id="@+id/group_user_about"
+        android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_user_about"
+            android:title="关   于" />
+    </group>
+
+    <group
+        android:id="@+id/group_user_end"
+        android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_userend"
+            android:title="" />
+    </group>
+</menu>
